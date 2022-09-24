@@ -1,35 +1,19 @@
+#!/usr/bin/env python3
+'''
+The widgets module contains all the widgets for the project
 
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtWidgets import *
+Author  :   Michael Biselx
+Date    :   09.2022
+Project :   PyQtTest
+'''
 
-from guifw.gui_elements import MenuBar
+__all__ = [
+    'WidgetMaker',  # this is a generically useful widget, and should be avaibale from here
 
-import collections
-import typing
+    # submodules
+    'utils',
+    'resources',
+    'hud'
+]
 
-
-from .utils import PlaceHolder
-
-
-class WidgetMaker(MenuBar):
-    widgetDict = collections.OrderedDict([
-        ("PlaceHolder", PlaceHolder)
-    ])
-
-    def __init__(self, parent: typing.Optional[QWidget] = None,
-                 flags: typing.Union[QtCore.Qt.WindowFlags, QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget) -> None:
-        super().__init__(parent, flags)
-
-        self.combo = QComboBox(self)
-        for lbl, w in self.widgetDict.items():
-            self.combo.addItem(lbl, userData=w)
-
-        makeBtn = QToolButton(self)
-        makeBtn.setText(' + ')
-        makeBtn.clicked.connect(self.makeWidget)
-
-        self.add([self.combo, makeBtn])
-
-    def makeWidget(self):
-        w = self.combo.currentData(QtCore.Qt.ItemDataRole.UserRole)
-        w(parent=self.parentWidget(), flags=QtCore.Qt.WindowType.Window).show()
+from .utils.utility_widgets import WidgetMaker

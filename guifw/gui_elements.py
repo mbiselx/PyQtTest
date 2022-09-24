@@ -17,12 +17,13 @@ class MenuBar(QWidget):
         self.setLayout(QHBoxLayout(self))
         self.layout().setContentsMargins(0, 0, 0, 0)
         self.layout().setSpacing(0)
+        # self.layout().setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.setContentsMargins(0, 0, 0, 0)
 
-        self.setSizePolicy(QSizePolicy.Policy.Maximum,
-                           QSizePolicy.Policy.MinimumExpanding)
+        self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding,
+                           QSizePolicy.Policy.Maximum)
 
-        self.items = []
+        self.items: 'list[QWidget | QLayout | list[QWidget | QLayout]]' = []
 
     def add(self, widget: typing.Union[QWidget, typing.List[QWidget]]):
         if widget is not None:
@@ -32,6 +33,8 @@ class MenuBar(QWidget):
             else:
                 if issubclass(widget.__class__, QWidget):
                     self.layout().addWidget(widget)
+                elif issubclass(widget.__class__, QSpacerItem):
+                    self.layout().addItem(widget)
                 elif issubclass(widget.__class__, QLayout):
                     self.layout().addLayout(widget)
                 else:
