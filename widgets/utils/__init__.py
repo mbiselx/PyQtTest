@@ -8,4 +8,4 @@ Project :   PyQtTest
 '''
 
 from .utility_widgets import StandardMenuBar
-from .placeholders import PlaceHolder
+from .placeholders import PlaceHolder, GraphicPlaceholder

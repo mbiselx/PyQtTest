@@ -14,7 +14,7 @@ import collections
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from guifw.gui_elements import MenuBar
-from .placeholders import PlaceHolder, DockPlaceHolder
+from .placeholders import PlaceHolder, DockPlaceHolder, GraphicPlaceholder, GraphicDockPlaceholder
 
 
 class SerialSelectWidget(QtWidgets.QComboBox):
@@ -113,7 +113,9 @@ class WidgetMaker(MenuBar):
     '''
     widgetDict: 'dict[str, type]' = collections.OrderedDict([
         ("PlaceHolder", PlaceHolder),
-        ("DockPlaceHolder", DockPlaceHolder)
+        ("DockPlaceHolder", DockPlaceHolder),
+        ("GraphicPlaceHolder", GraphicPlaceholder),
+        ("GraphicDockPlaceholder", GraphicDockPlaceholder)
     ])
 
     def __init__(self,

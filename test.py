@@ -6,8 +6,8 @@ Author  :   Michael Biselx
 Date    :   09.2022
 Project :   PyQtTest
 '''
-import typing
 
+import typing
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -34,7 +34,7 @@ class MyMainWindow(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     import sys
 
-    print(f"running {__file__} as Qt App")
+    print(f"running '{__file__.split('/')[-1]}' as Qt App")
     app = QtWidgets.QApplication(sys.argv)
 
     mw = MyMainWindow()
