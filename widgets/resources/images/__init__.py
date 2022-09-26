@@ -23,8 +23,8 @@ def list_all_files(ext: 'str | list[str] | None' = None) -> 'dict[str, str]':
 
     if ext is not None and not hasattr(ext, '__iter__'):
         ext = [ext]
-
-    here = os.sep.join(__file__.split('/')[:-1])
+    _file = __file__.replace('/', os.sep)
+    here = os.sep.join(_file.split(os.sep)[:-1])
     for dirpath, _, filenames in os.walk(here):
         for file in filenames:
             if ext is None or any([file.lower().endswith('.'+e) for e in ext]):
@@ -46,9 +46,10 @@ def get_path_to_file(file: str) -> str:
     try:
         return list_all_files()[file]
     except KeyError:
-        here = os.sep.join(__file__.split('/')[:-1])
+        _file = __file__.replace('/', os.sep)
+        here = os.sep.join(_file.split(os.sep)[:-1])
         raise FileNotFoundError(
-            f"could not find '{file}' in '{here}'")
+            f"could not find '{file}' in '{here}'") from None
 
 
 if __name__ == '__main__':
