@@ -7,16 +7,26 @@ Date    :   09.2022
 Project :   PyQtTest
 '''
 
+__all__ = [
+    'segment_image',
+    'color_image_by_segments',
+    'SegmentImage',
+    'ClickableSegmentImage'
+]
+
 import cv2
+import typing
 import numpy as np
 
+from PyQt5 import QtCore, QtGui, QtWidgets
+
 try:
-    from ..resources import get_path_to_img
-except:  # for the demo
-    from sys import path
+    from ..plotting.utils import ColorRGBA
+except (ImportError, ValueError):  # for the demo
+    import sys
     from os.path import dirname
-    path.append(dirname(dirname(path[0])))
-    from widgets.resources import get_path_to_img
+    sys.path.append(dirname(dirname(sys.path[0])))
+    from widgets.plotting.utils import ColorRGBA
 
 
 def segment_image(img_path) -> 'tuple[int, np.ndarray]':
@@ -43,7 +53,7 @@ def segment_image(img_path) -> 'tuple[int, np.ndarray]':
     return cv2.connectedComponents(~img_b, ltype=cv2.CV_16U)
 
 
-def color_image_by_segments(labels: np.ndarray, color_dict: 'dict[int, tuple[int, int, int, int]]') -> np.ndarray:
+def color_image_by_segments(labels: np.ndarray, color_dict: 'dict[int, ColorRGBA]') -> np.ndarray:
     '''
     colors an image based on given labels
 
@@ -57,26 +67,87 @@ def color_image_by_segments(labels: np.ndarray, color_dict: 'dict[int, tuple[int
     img = np.zeros((*labels.shape, 4), dtype=np.uint8)
 
     for label, color in color_dict.items():
-        img[np.where(labels == label)] = color if len(
-            color) == 4 else (*color, 255)
+        img[np.where(labels == label)] = color
 
-    return cv2.cvtColor(img, cv2.COLOR_RGBA2BGRA)
+    return img
 
+
+class SegmentImage(QtWidgets.QLabel):
+    _palette: 'dict[None|bool, ColorRGBA]' = {
+        True: ColorRGBA(255, 0, 0, 255),
+        False: ColorRGBA(50, 50, 50, 255),
+        None: ColorRGBA(0, 0, 0, 0)
+    }
+
+    def __init__(self,
+                 parent: typing.Optional[QtWidgets.QWidget] = None,
+                 flags: typing.Union[QtCore.Qt.WindowFlags,
+                                     QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget,
+                 img_path: str = None,
+                 * args, **kwargs):
+        super().__init__(parent=parent, flags=flags)
+
+        if img_path:
+            self.setImage(img=img_path)
+
+    def setImage(self, img: typing.Union[str, np.ndarray]):
+        '''set the image from a path or from a numpy array'''
+
+        if isinstance(img, str):
+            self.n_lbls, self.labels = segment_image(img_path=img_path)
+
+            self.colorLabels = dict([(0, self._palette[None])] +
+                                    [(l, self._palette[False]) for l in range(1, self.n_lbls)])
+            img = color_image_by_segments(self.labels, self.colorLabels)
+
+        pxmp = QtGui.QPixmap.fromImage(
+            QtGui.QImage(img, img.shape[1], img.shape[0],
+                         QtGui.QImage.Format.Format_RGBA8888)
+        )
+        self.setPixmap(pxmp)
+
+    def setOnlyRegionActive(self, label: int):
+        '''set a single region as active, switching the others off'''
+        self.colorLabels = dict([(0, self._palette[None])] +
+                                [(l, self._palette[l == label]) for l in range(1, self.n_lbls)])
+        img = color_image_by_segments(self.labels, self.colorLabels)
+        self.setImage(img)
+
+    def updateRegionActive(self, label: int, active: bool = True):
+        '''change the state of a region, leaving the others unchanged'''
+        self.colorLabels[label] = self._palette[active]
+        img = color_image_by_segments(self.labels, self.colorLabels)
+        self.setImage(img)
+
+
+class ClickableSegmentImage(SegmentImage):
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        '''on click'''
+        x, y = round(event.localPos().x()), round(event.localPos().y())
+        self.setOnlyRegionActive(self.labels[y][x])
 
 ############################################
 #  DEMO
 ############################################
 
+
 if __name__ == '__main__':
-
-    n_lbls, labels = segment_image(get_path_to_img('car.jpg'))
-
+    from widgets.resources import get_path_to_img
     from widgets.plotting.utils import ColorIterator
+
+    app = QtWidgets.QApplication(sys.argv)
+
+    img_path = get_path_to_img('car.jpg')
+
+    # demonstrate image segmentation
+    n_lbls, labels = segment_image(img_path)
     cs = dict(zip(range(0, n_lbls), ColorIterator().__iter__()))
-
     img_out = color_image_by_segments(labels, cs)
+    cv2.imshow('segmentation demo', cv2.cvtColor(img_out, cv2.COLOR_RGBA2BGRA))
 
-    cv2.imshow('demo', img_out)
+    # demonstrate integration into QtWidget
+    mw = ClickableSegmentImage(img_path=img_path)
+    mw.setWindowTitle("integration demo")
+    mw.show()
 
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    sys.exit(app.exec_())
