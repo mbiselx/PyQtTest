@@ -13,7 +13,7 @@ import collections
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from guifw.gui_elements import MenuBar
+from PyQtTest.guifw.gui_elements import MenuBar
 from .placeholders import PlaceHolder, DockPlaceHolder, GraphicPlaceholder, GraphicDockPlaceholder
 
 

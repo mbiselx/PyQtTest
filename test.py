@@ -11,8 +11,8 @@ import typing
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from widgets.utils import StandardMenuBar
-from widgets.hud import CameraTabs
+from PyQtTest.widgets.utils import StandardMenuBar
+from PyQtTest.widgets.hud import CameraTabs
 
 
 class MyMainWindow(QtWidgets.QMainWindow):
