@@ -11,6 +11,7 @@ import typing
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+
 from PyQtTest.widgets.utils import StandardMenuBar
 from PyQtTest.widgets.hud import CameraTabs
 

@@ -23,10 +23,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 try:
     from ..plotting.utils import ColorRGBA
 except (ImportError, ValueError):  # for the demo
-    import sys
-    from os.path import dirname
-    sys.path.append(dirname(dirname(sys.path[0])))
-    from widgets.plotting.utils import ColorRGBA
+    from PyQtTest.widgets.plotting.utils import ColorRGBA
 
 
 def segment_image(img_path) -> 'tuple[int, np.ndarray]':
@@ -132,8 +129,9 @@ class ClickableSegmentImage(SegmentImage):
 
 
 if __name__ == '__main__':
-    from widgets.resources import get_path_to_img
-    from widgets.plotting.utils import ColorIterator
+    import sys
+    from PyQtTest.resources import get_path_to_img
+    from PyQtTest.widgets.plotting.utils import ColorIterator
 
     app = QtWidgets.QApplication(sys.argv)
 
