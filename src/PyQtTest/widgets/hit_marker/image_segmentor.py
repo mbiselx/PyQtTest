@@ -21,16 +21,17 @@ import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 try:
-    from ..plotting.utils import ColorRGBA
+    from ..plotting import colors
 except (ImportError, ValueError):  # for the demo
-    from PyQtTest.widgets.plotting.utils import ColorRGBA
+    from PyQtTest.widgets.plotting import colors
 
 
-def segment_image(img_path) -> 'tuple[int, np.ndarray]':
+def segment_image(img: np.ndarray = None, img_path: str = None) -> 'tuple[int, np.ndarray]':
     '''
     takes a dark image on bright background
 
     @parameters:
+    * `img`      : image array
     * `img_path` : path to the image file
 
     @returns :
@@ -38,9 +39,14 @@ def segment_image(img_path) -> 'tuple[int, np.ndarray]':
             as well as the labeled image
     '''
 
+    if img is None:
+        if img_path is None:
+            raise RuntimeError("Either an image or a path must be specified")
+        else:
+            img = cv2.imread(img_path)
+
     # get image in grayscale
-    img_g = cv2.cvtColor(cv2.imread(img_path),
-                         cv2.COLOR_BGR2GRAY)
+    img_g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # binarize
     _, img_b = cv2.threshold(img_g, 0, 255,
@@ -50,7 +56,7 @@ def segment_image(img_path) -> 'tuple[int, np.ndarray]':
     return cv2.connectedComponents(~img_b, ltype=cv2.CV_16U)
 
 
-def color_image_by_segments(labels: np.ndarray, color_dict: 'dict[int, ColorRGBA]') -> np.ndarray:
+def color_image_by_segments(labels: np.ndarray, color_dict: 'dict[int, colors.ColorRGBA]') -> np.ndarray:
     '''
     colors an image based on given labels
 
@@ -70,10 +76,12 @@ def color_image_by_segments(labels: np.ndarray, color_dict: 'dict[int, ColorRGBA
 
 
 class SegmentImage(QtWidgets.QLabel):
-    _palette: 'dict[None|bool, ColorRGBA]' = {
-        True: ColorRGBA(255, 0, 0, 255),
-        False: ColorRGBA(50, 50, 50, 255),
-        None: ColorRGBA(0, 0, 0, 0)
+    '''an image with segments whose color can be set individually'''
+    _palette: 'dict[None|bool, colors.ColorRGBA]' = {
+        True: colors.red,
+        # True: colors.purple,
+        False: colors.gray,
+        None: colors.transparent
     }
 
     def __init__(self,
@@ -91,7 +99,7 @@ class SegmentImage(QtWidgets.QLabel):
         '''set the image from a path or from a numpy array'''
 
         if isinstance(img, str):
-            self.n_lbls, self.labels = segment_image(img_path=img_path)
+            self.n_lbls, self.labels = segment_image(img_path=img)
 
             self.colorLabels = dict([(0, self._palette[None])] +
                                     [(l, self._palette[False]) for l in range(1, self.n_lbls)])
@@ -118,6 +126,8 @@ class SegmentImage(QtWidgets.QLabel):
 
 
 class ClickableSegmentImage(SegmentImage):
+    '''an image with segments whose color can be set individually by clicking them'''
+
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         '''on click'''
         x, y = round(event.localPos().x()), round(event.localPos().y())
@@ -131,17 +141,10 @@ class ClickableSegmentImage(SegmentImage):
 if __name__ == '__main__':
     import sys
     from PyQtTest.resources import get_path_to_img
-    from PyQtTest.widgets.plotting.utils import ColorIterator
 
     app = QtWidgets.QApplication(sys.argv)
 
     img_path = get_path_to_img('car.jpg')
-
-    # demonstrate image segmentation
-    n_lbls, labels = segment_image(img_path)
-    cs = dict(zip(range(0, n_lbls), ColorIterator().__iter__()))
-    img_out = color_image_by_segments(labels, cs)
-    cv2.imshow('segmentation demo', cv2.cvtColor(img_out, cv2.COLOR_RGBA2BGRA))
 
     # demonstrate integration into QtWidget
     mw = ClickableSegmentImage(img_path=img_path)

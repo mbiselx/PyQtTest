@@ -7,6 +7,14 @@ Date    :   09.2022
 Project :   PyQtTest
 '''
 
+__all__ = [
+    'SerialSelectWidget',
+    'BaudSelectWidget',
+    'ClockWidget',
+    'WidgetMaker',
+    'StandardMenuBar'
+]
+
 import serial
 import typing
 import collections

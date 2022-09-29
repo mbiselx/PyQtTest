@@ -31,22 +31,30 @@ class ColorRGBA(tuple):
     def a(self) -> int: return self[3]
 
 
+# define some colors
+red = ColorRGBA(255, 000, 000)
+gold = ColorRGBA(255, 215, 000)
+lime = ColorRGBA(000, 255, 000)
+green = ColorRGBA(000, 180, 000)
+turquoise = ColorRGBA(000, 215, 255)
+blue = ColorRGBA(000, 000, 255)
+purple = ColorRGBA(160, 000, 215)
+magenta = ColorRGBA(255, 000, 255)
+white = ColorRGBA(255, 255, 255)
+gray = ColorRGBA(90, 90, 90)
+black = ColorRGBA(0, 0, 0)
+transparent = ColorRGBA(0, 0, 0, 0)
+
+
 class ColorIterator():
     '''automatically iterate though colors'''
-    colors = [ColorRGBA(255, 255, 255),  # white
-              ColorRGBA(255, 000, 000),  # red
-              ColorRGBA(255, 215, 000),  # gold
-              ColorRGBA(000, 255, 000),  # lime
-              ColorRGBA(000, 255, 215),  # forest
-              ColorRGBA(000, 000, 255),  # blue
-              ColorRGBA(215, 000, 255),  # purple
-              ]
+    colors = [red, gold, lime, green, blue, purple]
 
     def __init__(self) -> None:
-        self.i = 0
+        self.i = -1
 
-    def reset(self):
-        self.i = 0
+    def reset(self) -> None:
+        self.i = -1
 
     def __iter__(self) -> None:
         '''iterator to run though all available colors'''

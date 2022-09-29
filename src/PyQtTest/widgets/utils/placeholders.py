@@ -7,6 +7,13 @@ Date    :   09.2022
 Project :   PyQtTest
 '''
 
+__all__ = [
+    'PlaceHolder',
+    'DockPlaceHolder',
+    'GraphicPlaceholder',
+    'GraphicDockPlaceholder'
+]
+
 import typing
 import numpy as np
 

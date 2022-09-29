@@ -7,10 +7,15 @@ Date    :   09.2022
 Project :   PyQtTest
 '''
 
+__all__ = [
+    'ReloadAction',
+    'ReloadableWidget'
+]
+
 import typing
 from importlib import import_module, reload
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 
 from .placeholders import PlaceHolder
 
@@ -76,11 +81,14 @@ class ReloadableWidget(QtWidgets.QWidget):
     def __init__(self, parent: typing.Optional[QtWidgets.QWidget] = None,
                  flags: typing.Union[QtCore.Qt.WindowFlags,
                                      QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget,
-                 widget: typing.Optional[QtWidgets.QWidget] = None, **args) -> None:
+                 widget: typing.Optional[QtWidgets.QWidget] = None,
+                 **args) -> None:
         super().__init__(parent, flags)
 
         if widget is None:
             widget = PlaceHolder(**args)
+        else:
+            widget = widget(**args)
 
         self.reload = ReloadAction(parent=self, targets={widget: args})
         self.reload.reloadFinished.connect(self.doLayout)

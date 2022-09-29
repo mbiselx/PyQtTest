@@ -20,9 +20,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 
 try:
-    from .utils import ColorIterator
+    from .colors import ColorIterator
 except ImportError:  # in case we're using the demo
-    from utils import ColorIterator
+    from PyQtTest.widgets.plotting.colors import ColorIterator
 
 
 class InspectionPlot(pg.PlotWidget):

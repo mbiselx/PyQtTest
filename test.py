@@ -11,26 +11,9 @@ import typing
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-
-from PyQtTest.widgets.utils import StandardMenuBar
-from PyQtTest.widgets.hud import CameraTabs
-
-
-class MyMainWindow(QtWidgets.QMainWindow):
-    def __init__(self, parent: typing.Optional[QtWidgets.QWidget] = None,
-                 flags: typing.Union[QtCore.Qt.WindowFlags, QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Window) -> None:
-        super().__init__(parent, flags)
-
-        self.setMenuWidget(StandardMenuBar(self))
-
-        self.setCentralWidget(CameraTabs(self))
-        self.centralWidget().addTab(0)
-        self.setWindowTitle("Test Window")
-
-    def sizeHint(self) -> QtCore.QSize:
-        return QtCore.QSize(max(super().sizeHint().width(), self.menuWidget().sizeHint().width()),
-                            super().sizeHint().height())
-
+from PyQtTest.widgets.hit_marker.image_segmentor import ClickableSegmentImage
+from PyQtTest.widgets.utils.reloadable_widget import ReloadableWidget
+from PyQtTest.resources import get_path_to_img
 
 if __name__ == '__main__':
     import sys
@@ -38,7 +21,11 @@ if __name__ == '__main__':
     print(f"running '{__file__.split('/')[-1]}' as Qt App")
     app = QtWidgets.QApplication(sys.argv)
 
-    mw = MyMainWindow()
+    mw = ReloadableWidget(
+        flags=QtCore.Qt.WindowType.WindowStaysOnTopHint,
+        widget=ClickableSegmentImage,
+        img_path=get_path_to_img('car.jpg')
+    )
     mw.show()
 
     sys.exit(app.exec_())
