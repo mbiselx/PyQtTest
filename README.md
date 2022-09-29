@@ -14,4 +14,6 @@ The `-e` flag is used to make the package 'editable'.
 
 ## Items of Intrest
 
-1. Resource Manager
+1. [Resource Manager](src/PyQtTest/resources/images/__init__.py) : access module resources easily
+2. [Image Segmenting](src/PyQtTest/widgets/hit_marker/image_segmentor.py) : break and image down into segments and colorize an image by segment
+3. [Reloadable Widgets](src/PyQtTest/widgets/utils/reloadable_widget.py) : reload a widget from source at runtime - useful for *very* rapid prototyping

@@ -13,6 +13,7 @@ __all__ = [
 ]
 
 import typing
+import traceback
 from importlib import import_module, reload
 
 from PyQt5 import QtCore, QtWidgets
@@ -61,12 +62,18 @@ class ReloadAction(QtWidgets.QAction):
         '''reload targets from their modules'''
         reloaded = []
         for target, args in self.targets.items():
-            # reload module and get an instance of the new class
-            module = reload(import_module(target.__module__))
-            reloaded.append(getattr(module, target.__class__.__name__)(**args))
+            try:  # don't suicide if something is wrong in new code
+                # reload module and get an instance of the new class
+                module = reload(import_module(target.__module__))
+                reloaded.append(
+                    getattr(module, target.__class__.__name__)(**args))
 
-            # mark the old target for destruction
-            target.deleteLater()
+                # mark the old target for destruction
+                target.deleteLater()
+
+            except Exception:
+                traceback.print_exc()  # notify user about what happened
+                reloaded.append(target)  # re-use previous target
 
         # rebuild dict
         self._targets = dict(zip(reloaded, self._targets.values()))
