@@ -30,6 +30,7 @@ class ReloadAction(QtWidgets.QAction):
         super().__init__(parent)
 
         self.setText("&Reload")
+        self.setShortcut(QtCore.Qt.Modifier.CTRL + QtCore.Qt.Key.Key_R)
         tmp = QtWidgets.QWidget()
         self.setIcon(tmp.style().standardIcon(
             QtWidgets.QStyle.StandardPixmap.SP_BrowserReload))
@@ -82,6 +83,12 @@ class ReloadAction(QtWidgets.QAction):
         self.reloadFinished.emit(reloaded)
 
 
+class SeparatorAction(QtWidgets.QAction):
+    def __init__(self, parent) -> None:
+        super().__init__(parent)
+        self.setSeparator(True)
+
+
 class ReloadableWidget(QtWidgets.QWidget):
     '''a widget which implements the reload action and acts as a wrapper around another widget'''
 
@@ -99,7 +106,8 @@ class ReloadableWidget(QtWidgets.QWidget):
 
         self.reload = ReloadAction(parent=self, targets={widget: args})
         self.reload.reloadFinished.connect(self.doLayout)
-        self.addAction(self.reload)
+        self.addActions([self.reload,
+                         SeparatorAction(self)])
         self.setContextMenuPolicy(
             QtCore.Qt.ContextMenuPolicy.ActionsContextMenu)
 
@@ -111,3 +119,6 @@ class ReloadableWidget(QtWidgets.QWidget):
         '''lay out widgets'''
         for widget in widgets:
             self.layout().addWidget(widget)
+            self.addActions(widget.actions())
+            widget.setContextMenuPolicy(
+                QtCore.Qt.ContextMenuPolicy.NoContextMenu)
