@@ -24,7 +24,7 @@ if __name__ == '__main__':
     mw = ReloadableWidget(
         flags=QtCore.Qt.WindowType.WindowStaysOnTopHint,
         widget=ClickableSegmentImage,
-        img_path=get_path_to_img('car.jpg')
+        img_path=get_path_to_img('car_outline.jpg')
     )
     mw.show()
 
