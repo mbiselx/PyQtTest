@@ -29,8 +29,8 @@ class SerialSelectWidget(QtWidgets.QComboBox):
     '''
     A widget for selecting the serial port to use
 
-    parameters : 
-    * parent    :   (optional) the parent QtWidget
+    @parameters : 
+    * `parent`    :   (optional) the parent QtWidget
     '''
     default_choices = ['udp 0.0.0.14550', 'tcp 0.0.0.0.1', '...']
 
@@ -73,8 +73,8 @@ class BaudSelectWidget(QtWidgets.QComboBox):
     '''
     A widget for selecting the baudrate of the serial port
 
-    parameters : 
-    * parent    :   (optional) the parent QtWidget
+    @parameters : 
+    * `parent`    :   (optional) the parent QtWidget
     '''
 
     def __init__(self, parent: typing.Optional[QtWidgets.QWidget] = None) -> None:
@@ -93,9 +93,9 @@ class ClockWidget(QtWidgets.QLabel):
     '''
     A widget for displaying the current time
 
-    parameters : 
-    * parent    :   (optional) the parent QtWidget
-    * flags     :   (optional) the windwoflags for the instantiation of the widgets
+    @parameters : 
+    * `parent`    :   (optional) the parent QtWidget
+    * `flags`     :   (optional) the window flags for the instantiation of the widgets
     '''
 
     def __init__(self, *args, **kwargs):
@@ -114,10 +114,10 @@ class WidgetMaker(MenuBar):
     '''
     A widget factory for quick prototyping
 
-    parameters : 
-    * parent    :   (optional) the parent QtWidget
-    * flags     :   (optional) the windwoflags for the instantiation of the widgets
-    * widgetDict :  (optional) a dictionary of widgets to instantiate
+    @parameters : 
+    * `parent`    :   (optional) the parent QtWidget
+    * `flags`     :   (optional) the window flags for the instantiation of the widgets
+    * `widgetDict` :  (optional) a dictionary of widgets to instantiate
     '''
     widgetDict: 'dict[str, type]' = collections.OrderedDict([
         ("PlaceHolder", PlaceHolder),
@@ -161,11 +161,17 @@ class WidgetMaker(MenuBar):
 class StandardMenuBar(MenuBar):
     '''
     a standard menu bar for quick prototyping
+
+    @parameters : 
+    * `parent`    :   (optional) the parent QtWidget
+    * `flags`     :   (optional) the window flags for the instantiation of the widgets
+    * `widgetDict` :  (optional) a dictionary of widgets for the widgetmaker
     '''
 
     def __init__(self,
                  parent: typing.Optional[QtWidgets.QWidget] = None,
-                 flags: typing.Union[QtCore.Qt.WindowFlags, QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget) -> None:
+                 flags: typing.Union[QtCore.Qt.WindowFlags, QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget,
+                 widgetDict: typing.Optional[typing.Dict[str, typing.Type[QtWidgets.QWidget]]] = None) -> None:
         super().__init__(parent, flags)
 
         self.add([
@@ -174,7 +180,7 @@ class StandardMenuBar(MenuBar):
             QtWidgets.QSpacerItem(0, 0,
                                   QtWidgets.QSizePolicy.Policy.MinimumExpanding,
                                   QtWidgets.QSizePolicy.Policy.Maximum),
-            WidgetMaker(self),
+            WidgetMaker(self, widgetdict=widgetDict),
             QtWidgets.QSpacerItem(0, 0,
                                   QtWidgets.QSizePolicy.Policy.MinimumExpanding,
                                   QtWidgets.QSizePolicy.Policy.Maximum),

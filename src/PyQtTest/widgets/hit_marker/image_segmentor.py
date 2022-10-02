@@ -31,7 +31,7 @@ except (ImportError, ValueError):  # for the demo
 
 def segment_image(img: np.ndarray = None,
                   img_path: str = None,
-                  outline_img: bool = True) -> 'tuple[int, np.ndarray]':
+                  outline_img: bool = False) -> 'tuple[int, np.ndarray]':
     '''
     takes a dark area image on bright background
 
@@ -90,7 +90,16 @@ def color_image_by_segments(labels: np.ndarray, color_dict: 'dict[int, colors.Co
 
 
 class SegmentImage(QtWidgets.QLabel):
-    '''an image with segments whose color can be set individually'''
+    '''
+    an image with segments whose color can be set individually
+
+    @parameters : 
+    * `parent`      :   (optional) the parent QtWidget
+    * `flags`       :   (optional) the window flags for the instantiation of the widgets
+    * `img_path`    :   (optional) the path to the image file to use
+    * `outline_img` :   (optional) wheather or not the image is an outline image 
+                        or a full area image. Default is an area image.
+    '''
     _palette: 'dict[None|bool, colors.ColorRGBA]' = {
         True: colors.red,
         False: colors.gray,
@@ -103,7 +112,8 @@ class SegmentImage(QtWidgets.QLabel):
                  flags: typing.Union[QtCore.Qt.WindowFlags,
                                      QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget,
                  img_path: str = None,
-                 * args, **kwargs):
+                 outline_img: bool = False,
+                 *args, **kwargs):
         super().__init__(parent=parent, flags=flags)
 
         self.setCursor(QtCore.Qt.CursorShape.CrossCursor)
@@ -124,7 +134,7 @@ class SegmentImage(QtWidgets.QLabel):
         self.setStyle(InstantToolTipSyle(self.style()))
 
         if img_path:
-            self.setImage(img=img_path)
+            self.setImage(img=img_path, outline_img=outline_img)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
         '''track the mouse to display relevant tool tip'''
@@ -135,11 +145,20 @@ class SegmentImage(QtWidgets.QLabel):
         # don't pass the event on
         event.accept()
 
-    def setImage(self, img: typing.Union[str, np.ndarray]):
-        '''set the image from a path or directly from a numpy array'''
+    def setImage(self, img: typing.Union[str, np.ndarray], outline_img: bool = False):
+        '''
+        set the image from a path or directly from a numpy array
+
+        @parameters :
+        * `img`         :   the image as a numpy array, or the path to the image 
+                            file to use as a string
+        * `outline_img` :   (optional) wheather or not the image is an outline image 
+                            or a full area image. Default is an area image.
+        '''
 
         if isinstance(img, str):
-            self.n_lbls, self.labels = segment_image(img_path=img)
+            self.n_lbls, self.labels = segment_image(img_path=img,
+                                                     outline_img=outline_img)
 
             # create the tooltip segment names
             self._segment_names = dict(
@@ -156,44 +175,84 @@ class SegmentImage(QtWidgets.QLabel):
         self.setPixmap(pxmp)
 
     def setLabelName(self, label: int, name: str):
-        '''set the name to display in the tooltip'''
+        '''
+        set the name to display in the tooltip for a given label
+
+        @parameters :
+        * `label`   :   the label for which the name should be set
+        * `name`    :   the name attributed to the segment label
+        '''
         self._segment_names[label] = name
 
     def setLabelNames(self, names: 'list[str]'):
-        '''set the names to display in the tooltip'''
+        '''
+        set the names to display in the tooltip for all labels
+
+        @parameters :
+        * `names`    :   iterator of strings used to set the label names
+        '''
         for lbl, name in enumerate(names):
             self._segment_names[lbl] = name
 
-    def setOnlyRegionActive(self, label: int):
-        '''set a single region as active, switching the others off'''
+    def setOnlySegmentActive(self, label: int):
+        '''
+        set a single segment as active, switching the others off
+
+        @parameters :
+        * `label`    :  the label of the region to activate
+        '''
         self.colorLabels = dict([(0, self._palette[None])] +
                                 [(l, self._palette[l == label]) for l in range(1, self.n_lbls)])
         img = color_image_by_segments(self.labels, self.colorLabels)
         self.setImage(img)
 
-    def updateRegionActive(self, label: int, active: bool = True):
-        '''change the state of a region, leaving the others unchanged'''
+    def updateSegentActive(self, label: int, active: bool = True):
+        '''
+        change the state of a region, leaving the others unchanged
+
+        @parameters :
+        * `label`    :  the label of the segment to activate/deactivate        
+        * `active`   :  if the region should be set as active or not
+        '''
         self.colorLabels[label] = self._palette[active]
         img = color_image_by_segments(self.labels, self.colorLabels)
         self.setImage(img)
 
-    def activeRegions(self) -> 'list[int]':
+    def activeSegments(self) -> 'list[int]':
+        '''return labels of currently active segment'''
         return [l for l, c in self.colorLabels.items() if c == self._palette[True]]
 
-    def activeRegionNames(self) -> 'list[str]':
-        return [self._segment_names[l] for l in self.activeRegions()]
+    def activeSegmentNames(self) -> 'list[str]':
+        '''return names of currently active segments'''
+        return [self._segment_names[l] for l in self.activeSegments()]
 
 
 class ClickableSegmentImage(SegmentImage):
-    '''an image with segments whose color can be set individually by clicking them'''
+    '''
+    an image with segments whose color can be set individually by clicking them,
+    and whose names can be changed interactively ([right-click] > 'Set Name').
+
+    @parameters : 
+    * `parent`      :   (optional) the parent QtWidget
+    * `flags`       :   (optional) the window flags for the instantiation of the widgets
+    * `img_path`    :   (optional) the path to the image file to use
+    * `outline_img` :   (optional) wheather or not the image is an outline image 
+                        or a full area image. Default is an area image.
+    '''
 
     clicked = QtCore.pyqtSignal()
     clicked_segment = QtCore.pyqtSignal(int)
 
-    def __init__(self, parent: typing.Optional[QtWidgets.QWidget] = None, flags: typing.Union[QtCore.Qt.WindowFlags, QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget, img_path: str = None, *args, **kwargs):
-        super().__init__(parent, flags, img_path, *args, **kwargs)
+    def __init__(self,
+                 parent: typing.Optional[QtWidgets.QWidget] = None,
+                 flags: typing.Union[QtCore.Qt.WindowFlags, QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget,
+                 img_path: str = None,
+                 outline_img: bool = False,
+                 *args, **kwargs):
+        super().__init__(parent, flags, img_path, outline_img, *args, **kwargs)
 
         class SetNameAction(QtWidgets.QAction):
+            '''an action to set a segment name'''
             newName = QtCore.pyqtSignal(int, str)
 
             def __init__(self, *args, text='Set &Name', **kwargs) -> None:
@@ -210,19 +269,21 @@ class ClickableSegmentImage(SegmentImage):
 
             def _showDialog(self):
                 '''internal callback'''
-                active = self.parentWidget().activeRegionNames()
+                active = self.parentWidget().activeSegmentNames()
                 if len(active) == 1:  # only show if there's an active region
                     self.dialog.setTextValue(active[0])
                     self.dialog.show()
 
             def _newName(self):
                 '''internal callback'''
-                l = self.parentWidget().activeRegions()[0]
+                l = self.parentWidget().activeSegments()[0]
                 lbl = self.dialog.textValue()
                 self.parentWidget().setLabelName(l, lbl)
                 self.newName.emit(l, lbl)
 
         class ExportNamesAction(QtWidgets.QAction):
+            '''an action to export segment names to pickle file'''
+
             def __init__(self, parent: QtWidgets.QWidget, *args, text='&Export Names', **kwargs) -> None:
                 super().__init__(text, parent, *args, **kwargs)
                 self.setIcon(parent.style().standardIcon(
@@ -242,6 +303,8 @@ class ClickableSegmentImage(SegmentImage):
                         pickle.dump(self.parentWidget()._segment_names, file)
 
         class ImportNamesAction(QtWidgets.QAction):
+            '''an action to import segment names from a pickle file'''
+
             def __init__(self, parent: QtWidgets.QWidget, *args, text='&Import Names', **kwargs) -> None:
                 super().__init__(text, parent, *args, **kwargs)
 
@@ -265,6 +328,7 @@ class ClickableSegmentImage(SegmentImage):
                     with open(infile, 'rb') as file:
                         self.parentWidget()._segment_names = pickle.load(file)
 
+        # add above-defined actions to the widget, and enable contextmenu
         self.addActions([SetNameAction(parent=self),
                          ExportNamesAction(parent=self),
                          ImportNamesAction(parent=self)])
@@ -275,7 +339,7 @@ class ClickableSegmentImage(SegmentImage):
         '''on click'''
         lbl = self.labels[round(event.localPos().y()),
                           round(event.localPos().x())]
-        self.setOnlyRegionActive(lbl)
+        self.setOnlySegmentActive(lbl)
         self.clicked.emit()
         self.clicked_segment.emit(lbl)
         event.accept()

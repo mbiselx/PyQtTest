@@ -22,7 +22,16 @@ from .placeholders import PlaceHolder
 
 
 class ReloadAction(QtWidgets.QAction):
-    '''reload the target widgets and create new instances thereof'''
+    '''
+    a menu action to reload the target widgets and create new instances thereof.
+    Shortcut : [CTRL + R]
+
+    ! NOTE : this only relaods the file the widget is defined in, not all of its dependencies 
+
+    @parameters : 
+    * `parent`  :   the parent QtWidget
+    * `targets` :   the target widgets to reaload, along with their instantiation arguments
+    '''
     reloadFinished = QtCore.pyqtSignal(list)
 
     def __init__(self, parent: typing.Optional[QtCore.QObject],
@@ -84,13 +93,24 @@ class ReloadAction(QtWidgets.QAction):
 
 
 class SeparatorAction(QtWidgets.QAction):
+    '''a separator for context menus'''
+
     def __init__(self, parent) -> None:
         super().__init__(parent)
         self.setSeparator(True)
 
 
 class ReloadableWidget(QtWidgets.QWidget):
-    '''a widget which implements the reload action and acts as a wrapper around another widget'''
+    '''
+    a widget which implements the reload action and acts as a wrapper around another widget.
+    Shortcut : [CTRL + R]
+
+    @parameters : 
+    * `parent`  :   (optional) the parent QtWidget
+    * `flags`   :   (optional) the window flags for the instantiation of the widgets
+                    if no widget is specified, fall back on placeholder widget
+    * `widget`  :   (optional) the target widget to reaload, followed by its instantiation arguments (with keywords)
+    '''
 
     def __init__(self, parent: typing.Optional[QtWidgets.QWidget] = None,
                  flags: typing.Union[QtCore.Qt.WindowFlags,
@@ -99,10 +119,7 @@ class ReloadableWidget(QtWidgets.QWidget):
                  **args) -> None:
         super().__init__(parent, flags)
 
-        if widget is None:
-            widget = PlaceHolder(**args)
-        else:
-            widget = widget(**args)
+        widget = widget(**args) if widget is not None else PlaceHolder(**args)
 
         self.reload = ReloadAction(parent=self, targets={widget: args})
         self.reload.reloadFinished.connect(self.doLayout)
