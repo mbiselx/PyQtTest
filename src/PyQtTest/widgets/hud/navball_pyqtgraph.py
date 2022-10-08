@@ -8,6 +8,7 @@ Project :   PyQtTest
 '''
 
 import math
+from multiprocessing.sharedctypes import Value
 import numpy as np
 
 from PyQt5 import QtCore, QtWidgets
@@ -122,11 +123,9 @@ class UVSphere(AbstractGeometry):
 
     def __init__(self, nb_gores: int = 6, nb_rows: int = 3) -> None:
 
-        nb_gores += 1  # this seems to be necessary
-
         self.vertices = [[0, 0, 1]]  # north pole
         for theta in reversed(np.linspace(-np.pi/2, np.pi/2, nb_rows+2, True)[1:-1]):
-            for phi in np.linspace(-np.pi, np.pi, nb_gores):
+            for phi in np.linspace(0, 2*np.pi,  nb_gores):
                 self.vertices.append(
                     [math.cos(phi)*math.cos(theta), math.sin(phi)*math.cos(theta), math.sin(theta)])
         self.vertices.extend([[0, 0, -1]])  # south pole
@@ -151,6 +150,7 @@ class UVSphere(AbstractGeometry):
                      (r+1)*nb_gores + g,
                      (r+1)*nb_gores + 1 + g % nb_gores]
                 )
+
         self.faces.extend(bottom_faces)
 
 
@@ -170,32 +170,61 @@ class UVNavball(UVSphere):
         -6: (.5, .5, .5, 1)
     }
 
-    def __init__(self, nb_gores: int = 6, nb_rows: int = 3) -> None:
+    def __init__(self, nb_gores: int = 7, nb_rows: int = 5) -> None:
         super().__init__(nb_gores, nb_rows)
         self._colorize(nb_gores)
 
-    def _colorize(self, nb_gores: int):
+    def _colorize(self, nb_gores: int, pattern: str = 'beachball'):
         n = len(self.faces)
-
         self.face_colors = []
-        for idx, face in enumerate(self.faces):
-            mod = +1 if idx < n//2 else -1
 
-            # barberpole :
-            # if idx < nb_gores or idx >= n-nb_gores-1:
-            #     key = mod*(1 + idx % 2)
-            # else:
-            #     key = mod*(1 + idx//2%2)
+        # generate different patterns:
+        if pattern.lower() == 'beachball':
+            for idx in range(len(self.faces)):
+                mod = +1 if idx < n//2 else -1
 
-            # beachball :
-            if idx < nb_gores or idx >= n-nb_gores-1:
-                key = mod*(1 + idx % 2)
-            else:
-                idx -= nb_gores  # diregard first row
-                idx = idx//2 % nb_gores  # for each row start afresh
-                key = mod*(idx % 6 + 1)
+                if idx < nb_gores or idx >= n-nb_gores-1:
+                    key = mod*(1 + idx % 2)
+                else:
+                    # current ring :
+                    r = (idx - nb_gores) // (2*nb_gores)
+                    # gore on the current ring
+                    g = (idx - nb_gores) % (2*nb_gores)
+                    # advance by one on every ring
+                    key = mod*(1 + int(g % 4 > 1) % 2)
 
-            self.face_colors.append(self.palette[key])
+                self.face_colors.append(self.palette[key])
+
+        elif pattern.lower() == 'spiral':
+            for idx in range(len(self.faces)):
+                mod = +1 if idx < n//2 else -1
+
+                if idx < nb_gores or idx >= n-nb_gores-1:
+                    key = mod*(1 + idx % 2)
+
+                else:
+                    key = mod*(1 + idx//2 % 2)
+
+                self.face_colors.append(self.palette[key])
+
+        elif pattern.lower() == 'checkerboard':
+            for idx in range(len(self.faces)):
+                mod = +1 if idx < n//2 else -1
+
+                if idx < nb_gores or idx >= n-nb_gores-1:
+                    key = mod*(1 + idx % 2)
+                else:
+                    # current ring :
+                    r = (idx - nb_gores) // (2*nb_gores)
+                    # gore on the current ring
+                    g = (idx - nb_gores) % (2*nb_gores)
+                    # advance by one on every ring
+                    key = mod*(1 + (int(g % 4 > 1) + r) % 2)
+
+                self.face_colors.append(self.palette[key])
+
+        else:
+            raise ValueError(f"The pattern {pattern} has not been implemented")
 
 
 class NavballWidget(GLViewWidget):
@@ -203,7 +232,7 @@ class NavballWidget(GLViewWidget):
         super().__init__(parent)
 
         # mesh_data = Isocahedron().mesh()
-        mesh_data = UVNavball(6, 5).mesh()
+        mesh_data = UVNavball(15, 13).mesh()
         mesh = GLMeshItem(meshdata=mesh_data,
                           smooth=False,
                           drawFaces=True,
