@@ -132,6 +132,9 @@ class ReloadableWidget(QtWidgets.QWidget):
         self.layout().setContentsMargins(*4*[0])
         self.doLayout([widget])
 
+        self.setWindowTitle(widget.__class__.__name__)
+        self.setWindowIcon(self.reload.icon())
+
     def doLayout(self, widgets: typing.List[QtWidgets.QWidget]):
         '''lay out widgets'''
         for widget in widgets:
