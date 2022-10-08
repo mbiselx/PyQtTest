@@ -8,10 +8,9 @@ Project :   PyQtTest
 '''
 
 import math
-from multiprocessing.sharedctypes import Value
 import numpy as np
 
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 from pyqtgraph.opengl import GLViewWidget, MeshData, GLMeshItem
 
 
@@ -70,7 +69,6 @@ class IsoSphere(Icosahedron):
 
                 idx = [idx for idx, v in enumerate(self.vertices) if sum(
                     (p1 - p2)**2 for p1, p2 in zip(mp, v)) < 1e-2]
-                print(idx)
                 if len(idx) > 0:
                     midpoint_idx.append(idx[0])
                 else:
@@ -85,8 +83,6 @@ class IsoSphere(Icosahedron):
 
         self.faces = new_faces
 
-        print(len(self.vertices))
-
 
 class IsoNavball(IsoSphere):
     palette = {
@@ -94,8 +90,8 @@ class IsoNavball(IsoSphere):
         False: (0, 0, 1, 1)
     }
 
-    def __init__(self) -> None:
-        super().__init__(subdivisions=1)
+    def __init__(self, subdivisions=4) -> None:
+        super().__init__(subdivisions)
         self._colorize()
 
     def _colorize(self):
@@ -226,21 +222,54 @@ class UVNavball(UVSphere):
             raise ValueError(f"The pattern {pattern} has not been implemented")
 
 
-class NavballWidget(GLViewWidget):
+class NavballWidget(QtWidgets.QLabel):
     def __init__(self, parent: QtWidgets.QWidget = None):
         super().__init__(parent)
 
-        # mesh_data = Isocahedron().mesh()
         mesh_data = UVNavball(96, 51, density=12).mesh()
         mesh = GLMeshItem(meshdata=mesh_data,
                           smooth=False,
                           drawFaces=True,
-                          #   drawEdges=True,
-                          #   edgeColor=(0, 0, 0, 1),
                           )
-        self.addItem(mesh)
+        self.viewer = GLViewWidget(self)
+        self.viewer.addItem(mesh)
+        self.viewer.setCameraPosition(distance=2.3, elevation=0)
+        self.viewer.resize(self.size())
+        self.resizeEvent = self.viewer.resizeEvent
+        self.viewer.hide()
 
-        self.setCameraPosition(distance=3)
+        self.setMouseTracking(True)
+        self.mousePos = QtCore.QPointF(0, 0)
+        self.mouseMoveEvent()
+
+        # self.startTimer(10)
+
+    def timerEvent(self, event: QtCore.QTimerEvent):
+        self.viewer.resize(self.size())
+        img: QtGui.QImage = self.viewer.readQImage()
+        pxmap = QtGui.QPixmap.fromImage(img)
+        pxmap.setMask(
+            pxmap.createMaskFromColor(
+                QtCore.Qt.GlobalColor.black))
+        self.setPixmap(pxmap)
+        event.accept()
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent = None) -> None:
+        if event is not None:
+            lpos = event.localPos()
+            diff = lpos - self.mousePos
+            self.mousePos = lpos
+            self.viewer.orbit(-diff.x(), diff.y())
+
+            event.accept()
+
+        self.viewer.resize(self.size())
+        img: QtGui.QImage = self.viewer.readQImage()
+        pxmap = QtGui.QPixmap.fromImage(img)
+        pxmap.setMask(
+            pxmap.createMaskFromColor(
+                QtCore.Qt.GlobalColor.black))
+        self.setPixmap(pxmap)
 
     def sizeHint(self) -> QtCore.QSize:
         return QtCore.QSize(500, 500)
