@@ -125,17 +125,17 @@ class UVSphere(AbstractGeometry):
 
         self.vertices = [[0, 0, 1]]  # north pole
         for theta in reversed(np.linspace(-np.pi/2, np.pi/2, nb_rows+2, True)[1:-1]):
-            for phi in np.linspace(0, 2*np.pi,  nb_gores):
+            for phi in np.linspace(0, 2*np.pi,  nb_gores, False):
                 self.vertices.append(
                     [math.cos(phi)*math.cos(theta), math.sin(phi)*math.cos(theta), math.sin(theta)])
         self.vertices.extend([[0, 0, -1]])  # south pole
 
-        n = len(self.vertices)-1
+        n = len(self.vertices) - 1
 
         top_faces = [[0, g, 1+g % nb_gores]
                      for g in range(1, nb_gores+1)]
-        bottom_faces = [[n, n-g, n-1-g % nb_gores]
-                        for g in range(1, nb_gores+1)]
+        bottom_faces = [[n-g-1, n-(g if g > 0 else nb_gores), n]
+                        for g in reversed(range(nb_gores))]
 
         self.faces = top_faces
         for r in range(nb_rows-1):
@@ -170,28 +170,24 @@ class UVNavball(UVSphere):
         -6: (.5, .5, .5, 1)
     }
 
-    def __init__(self, nb_gores: int = 7, nb_rows: int = 5) -> None:
+    def __init__(self, nb_gores: int = 7, nb_rows: int = 5, pattern: str = 'spiral', density: int = 1) -> None:
         super().__init__(nb_gores, nb_rows)
-        self._colorize(nb_gores)
+        self._colorize(nb_gores, pattern, density)
 
-    def _colorize(self, nb_gores: int, pattern: str = 'beachball'):
+    def _colorize(self, nb_gores: int, pattern: str, density: int):
         n = len(self.faces)
         self.face_colors = []
 
         # generate different patterns:
         if pattern.lower() == 'beachball':
+
             for idx in range(len(self.faces)):
                 mod = +1 if idx < n//2 else -1
 
-                if idx < nb_gores or idx >= n-nb_gores-1:
-                    key = mod*(1 + idx % 2)
+                if idx < nb_gores or idx >= n-nb_gores:
+                    key = mod*(1 + idx//density % 2)
                 else:
-                    # current ring :
-                    r = (idx - nb_gores) // (2*nb_gores)
-                    # gore on the current ring
-                    g = (idx - nb_gores) % (2*nb_gores)
-                    # advance by one on every ring
-                    key = mod*(1 + int(g % 4 > 1) % 2)
+                    key = mod*(1 + idx//density//2 % 2)
 
                 self.face_colors.append(self.palette[key])
 
@@ -199,11 +195,14 @@ class UVNavball(UVSphere):
             for idx in range(len(self.faces)):
                 mod = +1 if idx < n//2 else -1
 
-                if idx < nb_gores or idx >= n-nb_gores-1:
-                    key = mod*(1 + idx % 2)
-
+                if idx < nb_gores or idx >= n-nb_gores:
+                    key = mod*(1 + idx//density % 2)
                 else:
-                    key = mod*(1 + idx//2 % 2)
+                    # current ring :
+                    r = (idx - nb_gores) // (2 * nb_gores) + 1
+                    # advance by one on every ring
+                    key = mod * \
+                        (1+((((idx-1 + 2*r) % (4*density)) >= (2*density))) % 2)
 
                 self.face_colors.append(self.palette[key])
 
@@ -211,13 +210,13 @@ class UVNavball(UVSphere):
             for idx in range(len(self.faces)):
                 mod = +1 if idx < n//2 else -1
 
-                if idx < nb_gores or idx >= n-nb_gores-1:
-                    key = mod*(1 + idx % 2)
+                if idx < nb_gores or idx >= n-nb_gores:
+                    key = mod*(1 + idx//density % 2)
                 else:
                     # current ring :
-                    r = (idx - nb_gores) // (2*nb_gores)
+                    r = ((idx - nb_gores) // (2 * nb_gores) + 1) // density
                     # gore on the current ring
-                    g = (idx - nb_gores) % (2*nb_gores)
+                    g = (idx - nb_gores) % (2 * nb_gores) // density
                     # advance by one on every ring
                     key = mod*(1 + (int(g % 4 > 1) + r) % 2)
 
@@ -232,14 +231,12 @@ class NavballWidget(GLViewWidget):
         super().__init__(parent)
 
         # mesh_data = Isocahedron().mesh()
-        mesh_data = UVNavball(15, 13).mesh()
+        mesh_data = UVNavball(96, 51, density=12).mesh()
         mesh = GLMeshItem(meshdata=mesh_data,
                           smooth=False,
                           drawFaces=True,
-                          color=(.1, .1, .1, .2),
-                          #   drawFaces=False,
-                          drawEdges=True,
-                          edgeColor=(0, 0, 0, 1),
+                          #   drawEdges=True,
+                          #   edgeColor=(0, 0, 0, 1),
                           )
         self.addItem(mesh)
 
