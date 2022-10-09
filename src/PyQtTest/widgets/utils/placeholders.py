@@ -330,10 +330,15 @@ class ComplexPlaceholder(QtWidgets.QWidget):
                 mustaches.layout().addLayout(bgl)
                 mustaches.layout().addWidget(scaler)
 
+                buttons = QtWidgets.QHBoxLayout()
+                buttons.addWidget(QtWidgets.QPushButton('Does Nothing'))
+                buttons.addWidget(QtWidgets.QPushButton('Also Nothing'))
+
                 self.setLayout(QtWidgets.QFormLayout())
                 self.layout().addRow('Name', self.name_editor)
                 self.layout().addRow('Description', self.descr_editor)
                 self.layout().addRow(mustaches)
+                self.layout().addRow(buttons)
                 self.layout().addItem(QtWidgets.QSpacerItem(0, 0,
                                                             QtWidgets.QSizePolicy.Policy.Maximum,
                                                             QtWidgets.QSizePolicy.Policy.Expanding))
