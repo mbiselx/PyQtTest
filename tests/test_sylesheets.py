@@ -3,19 +3,14 @@
 A file used for testing
 
 Author  :   Michael Biselx
-Date    :   09.2022
+Date    :   10.2022
 Project :   PyQtTest
 '''
 
-import typing
+from PyQt5 import QtCore, QtWidgets
 
-from PyQt5 import QtCore, QtGui, QtWidgets
-
-from PyQtTest.widgets.hit_marker.image_segmentor import ClickableSegmentImage
-from PyQtTest.widgets.hud.navball_pyqtgraph import NavballWidget
-# from PyQtTest.widgets.hud.navball_mine import NavballWidget
+from PyQtTest.widgets.utils.placeholders import ComplexPlaceholder
 from PyQtTest.widgets.utils.reloadable_widget import ReloadableWidget
-from PyQtTest.resources import get_path_to_img
 
 if __name__ == '__main__':
     import sys
@@ -25,7 +20,7 @@ if __name__ == '__main__':
 
     mw = ReloadableWidget(
         flags=QtCore.Qt.WindowType.WindowStaysOnTopHint,
-        widget=NavballWidget
+        widget=ComplexPlaceholder
     )
     mw.show()
     print("widget has been shown")
