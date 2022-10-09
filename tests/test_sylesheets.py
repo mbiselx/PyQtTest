@@ -11,6 +11,7 @@ from PyQt5 import QtCore, QtWidgets
 
 from PyQtTest.widgets.utils.placeholders import ComplexPlaceholder
 from PyQtTest.widgets.utils.reloadable_widget import ReloadableWidget
+from PyQtTest.resources import get_path_to_stylesheet
 
 if __name__ == '__main__':
     import sys
@@ -20,6 +21,7 @@ if __name__ == '__main__':
 
     mw = ReloadableWidget(
         flags=QtCore.Qt.WindowType.WindowStaysOnTopHint,
+        stylesheet=get_path_to_stylesheet('test.qss'),
         widget=ComplexPlaceholder
     )
     mw.show()

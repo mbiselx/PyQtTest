@@ -1,6 +1,37 @@
+/* 
+basic palette for the application 
+- base dark         bd      #232733
+- base              bs      #33373B
+- background        bg      #373B40
+- bg highlight      hl      #2ABf9E
+- text              tx      #FFFFFF
+- text highlight    th      #000000
+*/
+
+QWidget {
+    color: white;
+    background-color:
+        /*bs*/
+        #33373B;
+    font: 10pt;
+}
+
+
+QLabel[title='true'] {
+    background-color:
+        /*bd*/
+        #2e3237;
+    color: gainsboro;
+    font: bold 18pt;
+    padding: 2px;
+    border-radius: 10px;
+}
+
 QListWidget {
-    color: #FFFFFF;
-    background-color: #33373B;
+    border-color: gray;
+    background-color:
+        /*bg*/
+        #373B40;
 }
 
 QListWidget::item {
@@ -8,16 +39,42 @@ QListWidget::item {
 }
 
 QListWidget::item:selected {
-    background-color: #2ABf9E;
+    color: black;
+    background-color: aquamarine;
 }
 
-QLabel {
-    background-color: #FFFFFF;
-    qproperty-alignment: AlignCenter;
-}
 
 QPushButton {
-    background-color: #2ABf9E;
+    color: black;
+    background-color: aquamarine;
     padding: 20px;
     font-size: 18px;
+}
+
+QGroupBox {
+    /* font: bold; */
+    border: 1px solid gray;
+    margin-top: .5em;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+}
+
+QSlider::handle {
+    background-color: aquamarine;
+
+}
+
+QLineEdit {
+    border: 0px solid aquamarine;
+    border-bottom-width: 2px;
+}
+
+QPlainTextEdit {
+    border-color: gray;
+    background-color:
+        /*bg*/
+        #373B40;
 }
