@@ -195,16 +195,13 @@ class ComplexPlaceholder(QtWidgets.QWidget):
         viewer = QtWidgets.QWidget(self)
 
         title = QtWidgets.QLabel('image title')
-        titlefont = self.font()
-        titlefont.setBold(True)
-        titlefont.setPointSize(18)
-        title.setFont(titlefont)
-        title.setSizePolicy(QtWidgets.QSizePolicy.Policy.Maximum,
+        title.setProperty('title', True)
+        title.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
                             QtWidgets.QSizePolicy.Policy.Maximum)
         viewer.setTitle = title.setText
 
         descr = QtWidgets.QLabel('image discription')
-        descr.setSizePolicy(QtWidgets.QSizePolicy.Policy.Maximum,
+        descr.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
                             QtWidgets.QSizePolicy.Policy.Maximum)
         viewer.setDescription = descr.setText
 
@@ -226,7 +223,8 @@ class ComplexPlaceholder(QtWidgets.QWidget):
         viewer.setImage = setImage
 
         def resetImage():
-            viewer.setImage(viewer._activeItem.data(self.ImageDataRole))
+            if viewer._activeItem is not None:
+                viewer.setImage(viewer._activeItem.data(self.ImageDataRole))
         viewer.resetImage = resetImage
 
         def setActiveItem(item:  QtWidgets.QListWidgetItem):
@@ -345,6 +343,9 @@ class ComplexPlaceholder(QtWidgets.QWidget):
 
             def setActiveItem(self, item: QtWidgets.QListWidgetItem):
                 self._activeItem = item
+                self.name_editor.setText(item.text())
+                self.descr_editor.setPlainText(
+                    item.data(ComplexPlaceholder.DescriptionRole))
 
             def editItemName(self):
                 if self._activeItem is not None:
@@ -361,6 +362,11 @@ class ComplexPlaceholder(QtWidgets.QWidget):
                     self._activeItem.setData(ComplexPlaceholder.DescriptionRole,
                                              self.descr_editor.toPlainText())
                     self.itemEdited.emit()
-                event.accept()
+
+                if isinstance(event, QtGui.QFocusEvent):
+                    self.descr_editor.__class__.focusOutEvent(
+                        self.descr_editor, event)
+                else:
+                    self.descr_editor.clearFocus()
 
         return Editor()
