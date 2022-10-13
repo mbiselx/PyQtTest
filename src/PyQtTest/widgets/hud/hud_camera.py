@@ -18,7 +18,8 @@ class CameraStream(QtWidgets.QLabel):
     '''
     sysid = None
 
-    def __init__(self, parent: typing.Optional[QtWidgets.QWidget] = None,
+    def __init__(self,
+                 parent: typing.Optional[QtWidgets.QWidget] = None,
                  sysid: typing.Optional[int] = None) -> None:
         super().__init__(parent)
         self.setText("Waiting for camera stream ...")
