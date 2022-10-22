@@ -12,7 +12,7 @@ pip install -e .
 The `-e` flag is used to make the package 'editable'.
 
 
-## Items of Intrest
+## Items of Note
 
 1. [Resource Manager](src/PyQtTest/resources/images/__init__.py) : access module resources easily
 2. [Image Segmenting](src/PyQtTest/widgets/hit_marker/image_segmentor.py) : break and image down into segments and colorize an image by segment. The segments can also be labled.
@@ -22,8 +22,12 @@ The `-e` flag is used to make the package 'editable'.
 
 ## Gallery 
 
-| <img src="https://user-images.githubusercontent.com/62802642/197333006-ad02a63b-d307-41e1-be56-086eb1b38dc5.png" alt="segmentation" height="200" /> | <img src="https://user-images.githubusercontent.com/62802642/197332031-8adf8a84-b8e7-4921-890f-9553071f43f6.png" alt="navball" height="200" />
+| <img src="https://user-images.githubusercontent.com/62802642/197333006-ad02a63b-d307-41e1-be56-086eb1b38dc5.png" alt="segmentation" /> | <img src="https://user-images.githubusercontent.com/62802642/197334022-e99b31d2-7955-460d-99e4-b572dc2052a8.png" alt="reloading" /> | 
 | --- | --- |
-| The image segmentation widget (left is input image, right is segmented, labeled & clickable image). | The 3D navball widget on a transparent background. |
+| The image segmentation widget (left is input image, right is segmented, labeled & clickable image). | The reloadable widget being used with the image segmentation widget |
 
+
+| <img src="https://user-images.githubusercontent.com/62802642/197334036-38c4546f-6057-4cd2-89d3-2ef36bdd7ff5.png" alt="stylesheets" /> | <img src="https://user-images.githubusercontent.com/62802642/197332031-8adf8a84-b8e7-4921-890f-9553071f43f6.png" alt="navball" /> |
+| --- | --- |
+| Messing around with stylesheets is trivial thanks to the reloadable widget! 😄 |  The 3D navball widget on a transparent background. |
 
