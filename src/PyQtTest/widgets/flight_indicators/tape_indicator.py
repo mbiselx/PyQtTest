@@ -16,168 +16,421 @@ import typing
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
-class TapeIndicator(QtWidgets.QFrame):
+class AbstractTapeIndicator(QtWidgets.QFrame):
     '''
-    A tape-type (or: rolling drum-type) indicator, useful for displaying 
-    unbounded one-dimensional values (e.g. altitude or airspeed)
+    An abstract class defining the tape (rolling-drum) type of indicator.
+    The abstract Tape indicator draws nothing, it is mostly used to define the API.
+
+    It is based on the QFrame widget, since this already has the lineWidth
+    and midLineWidth methods.
     '''
 
     def __init__(self, parent: typing.Optional[QtWidgets.QWidget] = None,
                  flags: typing.Union[QtCore.Qt.WindowFlags, QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget) -> None:
         super().__init__(parent, flags)
 
-        # the current value to display
-        self._value_formatstr = "{:.2f}"
-        self.setLineWidth(3)  # with of the geometry lines
-        self.setRelativeRange(low=1, high=1)
-        self.setTick(major_tick=.2, minor_tick=.2/5)
-        self.setTickFormat()  # using default vals
-        self.setValue(0)
+        self._alignment = QtCore.Qt.AlignmentFlag.AlignLeft  # default alignment
+        self._inverted = False  # default is not inverted
+        self._value = 0  # default value
+        self._value_formatstr = "{:.2f}"  # default format string for the value
+        self._tick_formatstr = "{:.2f}"  # default format string for the ticks
+        self._lo, self._hi = -1., +1.  # default display range
+        self._major_tick_interval = .2  # default major tick interval
+        self._minor_tick_frequency = 5  # default number of minor ticks per major tick
 
-        # create the geometry :
-        self._createGeometry()
+    def setAlignment(self, alignment: QtCore.Qt.AlignmentFlag = QtCore.Qt.AlignmentFlag.AlignLeft):
+        '''set the alignment of the widget. only `right`, `left`, `top` and `bottom` are allowed'''
+        alignment = QtCore.Qt.AlignmentFlag(alignment)
+        if not alignment in (QtCore.Qt.AlignmentFlag.AlignLeft, QtCore.Qt.AlignmentFlag.AlignRight, QtCore.Qt.AlignmentFlag.AlignTop, QtCore.Qt.AlignmentFlag.AlignBottom):
+            raise ValueError("alignment must be a QtCore.Qt.AlignmentFlag, "
+                             f"not {alignment!s}")
+        self._alignment: QtCore.Qt.AlignmentFlag = alignment
+        self.update()
+
+    def alignment(self) -> QtCore.Qt.AlignmentFlag:
+        '''get the current alignment'''
+        return self._alignment
+
+    def setInverted(self, active: bool):
+        '''set an inverted appearance'''
+        self._inverted = bool(active)
+        self.update()
+
+    def inverted(self) -> bool:
+        '''does the widget have an inverted appearance'''
+        return self._inverted
+
+    def setValue(self, value: float, formatstr: str = None):
+        '''set the value to display'''
+        self._value = float(value)
+        if formatstr is not None:
+            # try it out so any errors are thrown immedately
+            formatstr.format(value)
+            self._value_formatstr = str(formatstr)
+        self.update()
 
     def value(self) -> float:
         '''get the current value being displayed'''
         return self._value
 
-    def setValue(self, value: float, formatstr: str = None):
-        '''set the value to display (updates the widget)'''
-        self._value = float(value)
-        if formatstr is not None:
-            self._value_formatstr = str(formatstr)
-
-        # we take the time here to calculate the new positions for the tickmarks
-        # 0) reset
-        self._major_ticks = []
-        self._minor_ticks = []
-
-        # 1) get the major tick marks in the current range
-        major_top = ((self._value + self._hi)/self._major_tick_spacing//1) * \
-            self._major_tick_spacing
-        for n in range(int((self._hi + self._lo)/self._major_tick_spacing)):
-            val = major_top-n*self._major_tick_spacing
-            pos = (self._value - val + self._hi) / (self._hi + self._lo)
-            self._major_ticks.append((self._tick_formatstr.format(val), pos))
-
-        # 2) get the minor tick marks in the current range
-        if self._minor_tick_spacing is not None:
-            maj_tk_pos = [t[1] for t in self._major_ticks]
-            minor_top = ((self._value + self._hi) /
-                         self._minor_tick_spacing//1)*self._minor_tick_spacing
-            for n in range(int((self._hi + self._lo)/self._minor_tick_spacing)):
-                val = minor_top-n*self._minor_tick_spacing
-                pos = (self._value - val + self._hi) / (self._hi + self._lo)
-                # avoid drawing two ticks in the same spot (it's bad for transparancy)
-                if not any(abs(pos - mj) < 1e-6 for mj in maj_tk_pos):
-                    self._minor_ticks.append(pos)
-
-        self.update()
-
     def setRelativeRange(self, low: float, high: float):
-        '''set the upper and lower range to display. Will be applied on the next setValue'''
-        if low < 0 or high < 0:
+        '''set the upper and lower range to display'''
+        if float(low) > 0:
             raise ValueError(
-                "Relative ranges are expected to be positive or zero")
+                f"Lower bound of the range must be <= 0, not {low}")
+        if float(high) < 0:
+            raise ValueError(
+                f"Upper bound of the range must be >= 0, not {high}")
         self._lo = float(low)
         self._hi = float(high)
+        self.update()
 
-    def setTick(self, major_tick: float, minor_tick: float = None):
-        '''set tick mark spacing. Will be applied on the next setValue'''
-        self._major_tick_spacing = float(major_tick)
-        if minor_tick is not None:
-            self._minor_tick_spacing = float(minor_tick)  # throw TypeErrors
-        else:
-            self._major_tick_spacing = None
+    def relativeRange(self) -> 'tuple[float, float]':
+        '''get the current relative range'''
+        return self._lo, self._hi
 
-    def setTickFormat(self, formatstr: str = '{:.1f}', tick_length_px: int = 10, line_width_px: int = 2):
-        '''set formatstring used for tick mark value. Will be applied on the next setValue'''
-        self._tick_formatstr = str(formatstr)
-        self._tick_length = int(tick_length_px)
-        self._tick_width = int(line_width_px)
+    def setTickInterval(self, interval: float, formatstr: str = None):
+        '''set the tick mark spacing for major (labeled) ticks'''
+        if float(interval) <= 0:
+            raise ValueError(f"Major Tick interval must be greater than 0!")
+        self._major_tick_interval = float(interval)
+        if formatstr is not None:
+            # try it out so any errors are thrown immedately
+            formatstr.format(interval)
+            self._tick_formatstr = str(formatstr)
+        self.update()
 
-    def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
-        '''re-generates the geometry on resize'''
-        self._createGeometry()
-        a0.accept()
+    def tickInterval(self) -> float:
+        '''get the tick mark spacing for the major (labeled) ticks'''
+        return self._major_tick_interval
+
+    def setMinorTickFrequency(self, freq: int):
+        '''set the number of minor ticks per major (labeled) tick'''
+        if int(freq) < 0:
+            raise ValueError(f"Minor Tick frequency must be at least 0!")
+        self._minor_tick_frequency = int(freq)
+        self.update()
+
+    def minorTickFrequency(self) -> int:
+        '''get the number of minor ticks per major (labeled) tick'''
+        return self._minor_tick_frequency
+
+    def _generate_ticks(self) -> 'tuple[list[tuple[str, float]], list[float]]':
+        '''generate the tick values'''
+        # 0) reset
+        major_ticks = []
+        minor_ticks = []
+
+        # 2) calculate the highest major tick
+        major_top = int((self._value + self._hi)/self._major_tick_interval) * \
+            self._major_tick_interval
+
+        # 3) using this as a reference, generate all lower major ticks
+        for n in range(int((self._hi - self._lo)/self._major_tick_interval)):
+            val = major_top-n*self._major_tick_interval
+            pos = (self._value - val + self._hi) / (self._hi - self._lo)
+            major_ticks.append((self._tick_formatstr.format(val), pos))
+
+        # 4) if required, generate minor ticks
+        if self._minor_tick_frequency > 0:
+            minor_tick_interval = self._major_tick_interval / \
+                self._minor_tick_frequency / (self._hi - self._lo)
+            # 4.1) generate the minor ticks above the top-most major tick
+            minor_ticks = [
+                major_ticks[0][-1] - n * minor_tick_interval for n in range(1, self._minor_tick_frequency)]
+
+            # 4.2) generate all the minor ticks below this
+            for _, pos in major_ticks:
+                minor_ticks.extend(
+                    pos + n*minor_tick_interval for n in range(1, self._minor_tick_frequency))
+
+        # 5) apply inversion, if necessary
+        if self._inverted:
+            major_ticks = [(l, 1-p) for l, p in major_ticks]
+            minor_ticks = [1-p for p in minor_ticks]
+
+        return major_ticks, minor_ticks
+
+
+class TapeIndicator(AbstractTapeIndicator):
+    '''
+    A tape-type (or: rolling drum-type) indicator, useful for displaying
+    unbounded one-dimensional values (e.g. altitude or airspeed)
+
+    The palette is made up of two colors : 
+    * `Foreground` : for the gemotrical elements
+    * `BrightText` : for the textual elements
+
+    The withd of the fixed geometrical elements can be set using the 
+    `setMidLineWidth()` method, while the width of the tick marks may 
+    be set using the `setLineWidth()` method.
+
+    The alignement is set using the `setAlignment()` method. Additionally, 
+    the orientation may be inverted (i.e. increasing towards the bottom/left) 
+    using the `setInverted()` method.
+    '''
+    darkPalette = QtGui.QPalette()
+    darkPalette.setColor(QtGui.QPalette.ColorRole.Foreground,  # elements
+                         QtGui.QColor('limeGreen'))
+    darkPalette.setColor(QtGui.QPalette.ColorRole.BrightText,  # text
+                         QtGui.QColor('ForestGreen'))
+    lightPalette = QtGui.QPalette()
+    lightPalette.setColor(QtGui.QPalette.ColorRole.Foreground,
+                          QtGui.QColor('lime'))
+    lightPalette.setColor(QtGui.QPalette.ColorRole.BrightText,
+                          QtGui.QColor('lime'))
+
+    def __init__(self, parent: typing.Optional[QtWidgets.QWidget] = None,
+                 flags: typing.Union[QtCore.Qt.WindowFlags, QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget) -> None:
+        super().__init__(parent, flags)
+
+        self._major_tick_length = 10  # px
+        self._minor_tick_length = 5  # px
+        self._minor_tick_width = 1  # px
+
+        self.setLineWidth(3)  # using lineWidth as the major tick width
+        self.setMidLineWidth(5)  # using midLineWidth as the geometry width
+        self.setPalette(self.darkPalette)
 
     def minimumSizeHint(self) -> QtCore.QSize:
+        '''minimum permissible size for this widget'''
         val_rect = self.fontMetrics().boundingRect(
             self._value_formatstr.format(self._value)+'0')
-        return QtCore.QSize(2*val_rect.width()+self._tick_length, 100)
+        if self._alignment in (QtCore.Qt.AlignmentFlag.AlignRight, QtCore.Qt.AlignmentFlag.AlignLeft):
+            return QtCore.QSize(2*val_rect.width()+self._major_tick_length, 200)
+        else:
+            return QtCore.QSize(200, 2*val_rect.width()+self._major_tick_length)
 
-    def sizeHint(self) -> QtCore.QSize:
-        return QtCore.QSize(300, 500)
+    def _create_fixed_geometry(self):
+        '''internal function for creating fixed geometry - should be called only on resize or alignement change'''
+        # create the central slide/groove
+        if self._alignment in (QtCore.Qt.AlignmentFlag.AlignRight, QtCore.Qt.AlignmentFlag.AlignLeft):
+            self._slide_line = [
+                QtCore.QPoint(self.width()//2, self.rect().top()),
+                QtCore.QPoint(self.width()//2, self.rect().bottom()),
+            ]
+        else:
+            self._slide_line = [
+                QtCore.QPoint(self.rect().left(), self.height()//2),
+                QtCore.QPoint(self.rect().right(), self.height()//2),
+            ]
 
-    def _createGeometry(self):
-        '''create the fixed geometry'''
-        self._vertLine = [
-            QtCore.QPoint(self.width()//2, self.rect().top()),
-            QtCore.QPoint(self.width()//2, self.rect().bottom()),
-        ]
-        self._indicator = [
-            QtCore.QPoint(self.width()//2, self.height()//2),
-            QtCore.QPoint(self.width(), self.height()//2),
-        ]
-        self._valuelbl = QtCore.QPoint(3*self.width()//4, self.height()//2-5)
+        # the lign which indicates the current value
+        # requires a special case for each alignment
+        if self._alignment == QtCore.Qt.AlignmentFlag.AlignLeft:
+            self._indicator = [
+                self.rect().center() + QtCore.QPoint(+1, 0),  # avoid weird rounding errors
+                QtCore.QPoint(self.rect().right(),
+                              self.rect().center().y())
+            ]
+        elif self._alignment == QtCore.Qt.AlignmentFlag.AlignRight:
+            self._indicator = [
+                self.rect().center() + QtCore.QPoint(-1, 0),  # avoid weird rounding errors
+                QtCore.QPoint(self.rect().left(),
+                              self.rect().center().y())
+            ]
+        elif self._alignment == QtCore.Qt.AlignmentFlag.AlignTop:
+            self._indicator = [
+                self.rect().center() + QtCore.QPoint(0, +1),  # avoid weird rounding errors
+                QtCore.QPoint(self.rect().center().x(),
+                              self.rect().bottom())
+            ]
+        elif self._alignment == QtCore.Qt.AlignmentFlag.AlignBottom:
+            self._indicator = [
+                self.rect().center() + QtCore.QPoint(0, -1),  # avoid weird rounding errors
+                QtCore.QPoint(self.rect().center().x(),
+                              self.rect().top())
+            ]
+
+    def _create_alpha_gradient(self,
+                               color: typing.Union[QtCore.Qt.GlobalColor, QtGui.QColor],
+                               rotated: bool = False) -> QtGui.QLinearGradient:
+        '''internal function for creating the gradient map used to draw the widget'''
+        if self._alignment in (QtCore.Qt.AlignmentFlag.AlignRight, QtCore.Qt.AlignmentFlag.AlignLeft):
+            if rotated:
+                gradient = QtGui.QLinearGradient(0, 0, self.height(), 0)
+            else:  # normal
+                gradient = QtGui.QLinearGradient(0, 0, 0, self.height())
+        else:
+            if rotated:
+                gradient = QtGui.QLinearGradient(0, 0, 0, self.width())
+            else:
+                gradient = QtGui.QLinearGradient(0., 0, self.width(), 0)
+
+        gradient.setColorAt(0.01,
+                            QtCore.Qt.GlobalColor.transparent)
+        gradient.setColorAt(.3,
+                            color)
+        gradient.setColorAt(.7,
+                            color)
+        gradient.setColorAt(0.99,
+                            QtCore.Qt.GlobalColor.transparent)
+        return gradient
+
+    def setAlignment(self, alignment: QtCore.Qt.AlignmentFlag = QtCore.Qt.AlignmentFlag.AlignLeft):
+        '''Set the alignment of the widget. Only `right`, `left`, `top` and `bottom` are allowed.'''
+        super().setAlignment(alignment)
+        self._create_fixed_geometry()
+
+    def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
+        super().resizeEvent(a0)
+        self._create_fixed_geometry()
+        a0.accept()
 
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
         '''draws the widget'''
-        # create the gradient used for drawing the text
-        tg = QtGui.QLinearGradient(0.5, 0., .5, self.height())
-        tg.setColorAt(0.01,
-                      QtCore.Qt.GlobalColor.transparent)
-        tg.setColorAt(.3,
-                      self.palette().color(
-                          QtGui.QPalette.ColorRole.WindowText))
-        tg.setColorAt(.7,
-                      self.palette().color(
-                          QtGui.QPalette.ColorRole.WindowText))
-        tg.setColorAt(0.99,
-                      QtCore.Qt.GlobalColor.transparent)
+        # super().paintEvent(a0) #we don't paint the QFrame rect !
 
-        p = QtGui.QPainter(self)
-        p.setPen(QtGui.QPen(tg, self.lineWidth()))
+        text = self._create_alpha_gradient(
+            self.palette().color(QtGui.QPalette.ColorRole.BrightText))
+        line = self._create_alpha_gradient(
+            self.palette().color(QtGui.QPalette.ColorRole.Foreground))
 
-        # draw the fixed geometry
-        p.drawLine(*self._vertLine)
-        p.drawLine(*self._indicator)
+        # create the painter
+        with QtGui.QPainter(self) as p:
+            p: QtGui.QPainter  # for typehinting
+            p.setPen(QtGui.QPen(line, self.midLineWidth()))
 
-        # draw the value
-        lbl = self._value_formatstr.format(self._value)
-        rect = self.fontMetrics().tightBoundingRect(lbl)
-        p.drawText(self._valuelbl.x() - rect.width() //
-                   2, self._valuelbl.y(), lbl)
+            # draw the fixed geometry
+            p.drawLine(*self._slide_line)
+            p.drawLine(*self._indicator)
 
-        # draw the tick marks
-        p.setPen(QtGui.QPen(tg, self._tick_width))
-        mid = self.width()//2
-        for lbl, pos in self._major_ticks:
-            rect = self.fontMetrics().tightBoundingRect(lbl)
-            p.drawLine(mid-self.lineWidth()//2, pos*self.height(),
-                       mid-self._tick_length, pos*self.height())
-            p.drawText(mid-self._tick_length-5-rect.width(),
-                       pos*self.height() + rect.height()//2,
-                       lbl)
+            # get the value text and its metrics
+            value_text = self._value_formatstr.format(self._value)
+            value_rect = self.fontMetrics().tightBoundingRect(value_text)
+            # the point at which the value will be drawn
+            if self._alignment == QtCore.Qt.AlignmentFlag.AlignLeft:
+                value_anchor = self.rect().center() + \
+                    QtCore.QPoint(self.midLineWidth(),
+                                  -self.midLineWidth())
+            elif self._alignment == QtCore.Qt.AlignmentFlag.AlignRight:
+                value_anchor = self.rect().center() + \
+                    QtCore.QPoint(-self.midLineWidth() - value_rect.width(),
+                                  -self.midLineWidth())
+            elif self._alignment == QtCore.Qt.AlignmentFlag.AlignTop:
+                value_anchor = self.rect().center() + \
+                    QtCore.QPoint(self.midLineWidth(),
+                                  self.midLineWidth()+value_rect.height())
+            elif self._alignment == QtCore.Qt.AlignmentFlag.AlignBottom:
+                value_anchor = self.rect().center() + \
+                    QtCore.QPoint(self.midLineWidth(),
+                                  -self.midLineWidth())
+            # draw the value text
+            p.setPen(QtGui.QPen(text, self.lineWidth()))
+            p.drawText(value_anchor, value_text)
 
-        p.setPen(QtGui.QPen(tg, 1))
-        for pos in self._minor_ticks:
-            p.drawLine(mid-self.lineWidth()//2, pos*self.height(),
-                       mid-self._tick_length//2, pos*self.height())
+            # draw the ticks
+            p.setPen(QtGui.QPen(line, self.lineWidth()))
+            major, minor = self._generate_ticks()
+            if self._alignment == QtCore.Qt.AlignmentFlag.AlignLeft:
+                mid = self.rect().center().x() - self.midLineWidth()//2-1
+                for _, position in major:
+                    p.drawLine(mid, position*self.height(),
+                               mid-self._major_tick_length, position*self.height())
+                p.setPen(QtGui.QPen(text, self.lineWidth()))
+                for label, position in major:
+                    rect = self.fontMetrics().tightBoundingRect(label)
+                    p.drawText(mid-7-self._major_tick_length-rect.width(),
+                               position*self.height() + rect.height()//2,
+                               label)
+                p.setPen(QtGui.QPen(line, self._minor_tick_width))
+                for position in minor:
+                    p.drawLine(mid, position*self.height(),
+                               mid-self._minor_tick_length, position*self.height())
+            elif self._alignment == QtCore.Qt.AlignmentFlag.AlignRight:
+                mid = self.rect().center().x() + self.midLineWidth()//2+1
+                for label, position in major:
+                    p.drawLine(mid, position*self.height(),
+                               mid+self._major_tick_length, position*self.height())
+                p.setPen(QtGui.QPen(text, self.lineWidth()))
+                for label, position in major:
+                    rect = self.fontMetrics().tightBoundingRect(label)
+                    p.drawText(mid+5+self._major_tick_length,
+                               position*self.height() + rect.height()//2,
+                               label)
+                p.setPen(QtGui.QPen(line, self._minor_tick_width))
+                for position in minor:
+                    p.drawLine(mid, position*self.height(),
+                               mid+self._minor_tick_length, position*self.height())
+            elif self._alignment == QtCore.Qt.AlignmentFlag.AlignTop:
+                mid = self.rect().center().y() - self.midLineWidth()//2-1
+                text_rotated = self._create_alpha_gradient(
+                    self.palette().color(QtGui.QPalette.ColorRole.BrightText), True)
+                for _, position in major:
+                    p.drawLine(position*self.width(), mid,
+                               position*self.width(), mid-self._major_tick_length)
+                p.save()
+                p.setPen(QtGui.QPen(line, self._minor_tick_width))
+                for position in minor:
+                    p.drawLine(position*self.width(), mid,
+                               position*self.width(), mid-self._minor_tick_length)
+                p.translate(self.rect().center())
+                p.rotate(-90)
+                p.translate(-self.rect().center().y(),
+                            -self.rect().center().x())
+                p.setPen(QtGui.QPen(text_rotated, self.lineWidth()))
+                for label, position in major:
+                    rect = self.fontMetrics().tightBoundingRect(label)
+                    p.drawText(self.rect().center().y()+self.midLineWidth()//2+6+self._major_tick_length,
+                               position*self.width()+rect.height()//2,
+                               label)
+                p.restore()
+            elif self._alignment == QtCore.Qt.AlignmentFlag.AlignBottom:
+                mid = self.rect().center().y() + self.midLineWidth()//2+1
+                text_rotated = self._create_alpha_gradient(
+                    self.palette().color(QtGui.QPalette.ColorRole.BrightText), True)
+                for _, position in major:
+                    p.drawLine(position*self.width(), mid,
+                               position*self.width(), mid+self._major_tick_length)
+                p.setPen(QtGui.QPen(line, self._minor_tick_width))
+                for position in minor:
+                    p.drawLine(position*self.width(), mid,
+                               position*self.width(), mid+self._minor_tick_length)
+                p.save()
+                p.translate(self.rect().center())
+                p.rotate(-90)
+                p.translate(-self.rect().center().y(),
+                            -self.rect().center().x())
+                p.setPen(QtGui.QPen(text_rotated, self.lineWidth()))
+                for label, position in major:
+                    rect = self.fontMetrics().tightBoundingRect(label)
+                    p.drawText(self.rect().center().y()-self.midLineWidth()//2-8-self._major_tick_length-rect.width(),
+                               position*self.width()+rect.height()//2,
+                               label)
+                p.restore()
 
-        p.end()
+        a0.accept()
 
 
 class TapeTestWidget(QtWidgets.QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         testWidget = TapeIndicator(self)
-        testWidget.setTickFormat('{:.1f}')
-        testWidget.setValue(10, '{:.1f}m')
+        testWidget.setValue(3, '{:.2f}m')
+        testWidget.setTickInterval(.2, '{:.1f}m')
 
         slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Vertical, self)
-        slider.valueChanged.connect(lambda v: testWidget.setValue(v/10 + 10))
+        slider.valueChanged.connect(lambda v: testWidget.setValue(v/50 + 3))
+
+        group = QtWidgets.QGroupBox("Alignment", self)
+        group.setLayout(QtWidgets.QVBoxLayout())
+        grp = QtWidgets.QButtonGroup(self)
+        for alignement, lbl in [(QtCore.Qt.AlignmentFlag.AlignLeft, "left"),
+                                (QtCore.Qt.AlignmentFlag.AlignRight, "right"),
+                                (QtCore.Qt.AlignmentFlag.AlignTop, "top"),
+                                (QtCore.Qt.AlignmentFlag.AlignBottom, "bot.")]:
+            rb = QtWidgets.QRadioButton(lbl, group)
+            grp.addButton(rb, alignement)
+            group.layout().addWidget(rb)
+        grp.button(testWidget.alignment()).setChecked(True)
+        grp.idClicked.connect(testWidget.setAlignment)
+        group.setMaximumWidth(150)
+
+        inv = QtWidgets.QCheckBox('invert', group)
+        inv.clicked.connect(testWidget.setInverted)
+        group.layout().addWidget(inv)
 
         self.setLayout(QtWidgets.QHBoxLayout())
+        self.layout().addWidget(group)
         self.layout().addWidget(slider)
         self.layout().addWidget(testWidget)

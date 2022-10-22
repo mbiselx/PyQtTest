@@ -18,7 +18,8 @@ The `-e` flag is used to make the package 'editable'.
 2. [Image Segmenting](src/PyQtTest/widgets/hit_marker/image_segmentor.py) : break and image down into segments and colorize an image by segment. The segments can also be labled.
 3. [Reloadable Widgets](src/PyQtTest/widgets/utils/reloadable_widget.py) : reload a widget from source at runtime - useful for *very* rapid prototyping. Also allows the quick reloading of the Qt stylesheet. 
 4. [Navball Widget](src/PyQtTest/widgets/hud/navball_pyqtgraph.py) : a 3D ball drawn on a transparent background - could be used to represent the attitude of a vehicle (like in [Kerball Space Programm](https://wiki.kerbalspaceprogram.com/wiki/Navball)). Still a bit rough and needs some work before it's ready.
-
+5. [Tape Indicator Flight Instrument](src/PyQtTest/widgets/flight_indicators/tape_indicator.py) : a simple but versatile widget implementing a tape (or drum) indicator, useful for displaying unbounded analog values.
+6. [Artificial Horizon Flight Instrument](src/PyQtTest/widgets/flight_indicators/artificial_horizon.py) : a simple artificial horizon widget that comes in two syles: dashboard-style and HUD-style.
 
 ## Gallery 
 
@@ -31,3 +32,6 @@ The `-e` flag is used to make the package 'editable'.
 | --- | --- |
 | Messing around with stylesheets is trivial thanks to the reloadable widget! 😄 |  The 3D navball widget on a transparent background. |
 
+| . | . | . | . |
+| --- | --- | --- | --- |
+| The tape indicator widget being tested in a vertical mode. | The tape indicator widget being tested in a horizontal mode. | The dashboard-style artificial horizon widget being tested. | The HUD-style artificial horizon widget being tested (with a professional looking font!) |

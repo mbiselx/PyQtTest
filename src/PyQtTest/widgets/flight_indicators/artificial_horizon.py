@@ -203,14 +203,11 @@ class HUDArtificalHorizon(AbstractArtificalHorizon):
 
         self.setPalette(self.darkPalette)
         self.setLineWidth(3)
-        f = self.font()
-        f.setFamily('Comic Sans MS')
-        f.setPointSize(14)
-        self.setFont(f)
 
         self.blur = QtWidgets.QGraphicsBlurEffect(self)
-        self.blur.setBlurRadius(1.7)
+        self.blur.setBlurRadius(1.5)
         self.setGraphicsEffect(self.blur)
+        self.setBlurred(False)
 
     def sizeHint(self) -> QtCore.QSize:
         return QtCore.QSize(500, 500)
@@ -287,11 +284,15 @@ class FunHorizonTestWidget(HUDArtificalHorizon):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
 
+        f = self.font()
+        f.setFamily('Comic Sans MS')
+        f.setPointSize(14)
+        self.setFont(f)
+
         from ...sensors import imu
 
         def updateOrientation():
             r, p, y = imu.get_current_euler_deg()
-            # print(r, p, y)
             self.setRoll(r)
             self.setPitch(p)
 
