@@ -8,3 +8,4 @@ Project :   PyQtTest
 '''
 
 from .tape_indicator import TapeIndicator
+# from .artificial_horizon import

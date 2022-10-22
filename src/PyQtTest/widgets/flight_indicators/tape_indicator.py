@@ -172,7 +172,7 @@ class TapeTestWidget(QtWidgets.QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         testWidget = TapeIndicator(self)
-        testWidget.setTickFormat('{:.1f}m')
+        testWidget.setTickFormat('{:.1f}')
         testWidget.setValue(10, '{:.1f}m')
 
         slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Vertical, self)
