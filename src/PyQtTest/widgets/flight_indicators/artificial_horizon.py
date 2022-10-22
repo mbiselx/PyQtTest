@@ -17,43 +17,41 @@ import typing
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
-class SimpleArtificalHorizon(QtWidgets.QFrame):
+class AbstractArtificalHorizon(QtWidgets.QFrame):
     def __init__(self, parent: typing.Optional[QtWidgets.QWidget] = None,
                  flags: typing.Union[QtCore.Qt.WindowFlags, QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget) -> None:
         super().__init__(parent, flags)
-
-        self.setRoll(0)
+        self.setRoll(0, -30, 30, 5)
         self.setPitch(0, -30, 30, 10)
-
-        p = QtGui.QPalette()
-        p.setColor(p.ColorRole.Base, QtGui.QColor('Brown'))
-        p.setColor(p.ColorRole.AlternateBase, QtGui.QColor('dodgerBlue'))
-        self.setPalette(p)
-
-        self.setLineWidth(3)
 
     def roll(self) -> float:
         return self._roll
 
-    def setRoll(self, roll: float):
+    def setRoll(self, roll: float, min_roll: int = None, max_roll: int = None, roll_ticks: int = None):
         self._roll = float(roll)
+        if min_roll is not None:
+            self._min_roll = int(min_roll)
+        if max_roll is not None:
+            self._max_roll = int(max_roll)
+        if roll_ticks is not None:
+            self._roll_ticks = int(roll_ticks)
         self.update()
 
     def pitch(self) -> float:
         return self._pitch
 
-    def setPitch(self, pitch: float, min_pitch: int = None, max_pitch: int = None, pitch_grad: int = None):
+    def setPitch(self, pitch: float, min_pitch: int = None, max_pitch: int = None, pitch_ticks: int = None):
         self._pitch = float(pitch)
         if min_pitch is not None:
             self._min_pitch = int(min_pitch)
         if max_pitch is not None:
             self._max_pitch = int(max_pitch)
-        if pitch_grad is not None:
-            self._pitch_grad = int(pitch_grad)
+        if pitch_ticks is not None:
+            self._pitch_ticks = int(pitch_ticks)
         self.update()
 
-    def sizeHint(self) -> QtCore.QSize:
-        return QtCore.QSize(500, 500)
+    def _height_from_pitch(self, pitch) -> int:
+        return self._square.center().y() + (self._square.height() * math.sin(pitch/180*3.1415926))//2
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
         # get the largest possible square
@@ -95,15 +93,13 @@ class SimpleArtificalHorizon(QtWidgets.QFrame):
 
         # pitch graduation geometry :
         self._pitch_graduations = []
-        for pitch_mark in range(self._min_pitch, self._max_pitch+self._pitch_grad, self._pitch_grad):
+        for pitch_mark in range(self._min_pitch, self._max_pitch+self._pitch_ticks, self._pitch_ticks):
             lbl = f"{pitch_mark}°"
-            h = (self._square.width() * math.sin(pitch_mark/180*3.1415926))//2
-            mark = QtCore.QLine(self._square.center().x()-self._square.width()//30-2*abs(pitch_mark),
-                                self._square.center().y() + h,
-                                self._square.center().x()+self._square.width()//30+2*abs(pitch_mark),
-                                self._square.center().y() + h)
+            h = self._height_from_pitch(pitch_mark)
+            mark = QtCore.QLine(self._square.center().x()-self._square.width()//30-2*abs(pitch_mark), h,
+                                self._square.center().x()+self._square.width()//30+2*abs(pitch_mark), h)
             pos = QtCore.QPoint(self._square.center().x() - self.fontMetrics().boundingRect(lbl).width()//2,
-                                self._square.center().y() + h - 3)
+                                h - 3)
             self._pitch_graduations.append((mark, lbl, pos))
 
         # roll graduations :
@@ -122,6 +118,29 @@ class SimpleArtificalHorizon(QtWidgets.QFrame):
 
         a0.accept()
 
+
+class SimpleArtificalHorizon(AbstractArtificalHorizon):
+    darkPalette = QtGui.QPalette()
+    darkPalette.setColor(QtGui.QPalette.ColorRole.Base,
+                         QtGui.QColor('SaddleBrown'))
+    darkPalette.setColor(QtGui.QPalette.ColorRole.AlternateBase,
+                         QtGui.QColor('DodgerBlue'))
+    lightPalette = QtGui.QPalette()
+    lightPalette.setColor(QtGui.QPalette.ColorRole.Base,
+                          QtGui.QColor('Chocolate'))
+    lightPalette.setColor(QtGui.QPalette.ColorRole.AlternateBase,
+                          QtGui.QColor('LightSkyBlue'))
+
+    def __init__(self, parent: typing.Optional[QtWidgets.QWidget] = None,
+                 flags: typing.Union[QtCore.Qt.WindowFlags, QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget) -> None:
+        super().__init__(parent, flags)
+
+        self.setPalette(self.lightPalette)
+        self.setLineWidth(3)
+
+    def sizeHint(self) -> QtCore.QSize:
+        return QtCore.QSize(500, 500)
+
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
         # 1) paint the moving background
         bg = QtGui.QPainter(self)
@@ -129,14 +148,12 @@ class SimpleArtificalHorizon(QtWidgets.QFrame):
 
         # apply roll
         bg.translate(self.rect().center())
-        bg.rotate(self._roll)
+        bg.rotate(-self._roll)
         bg.translate(-self.rect().center())
 
         # draw the ground
         bg.setBrush(self.palette().base())
-        bg.drawChord(self._square,
-                     (180+self._pitch) * 16,
-                     (180-2*self._pitch)*16)
+        bg.drawEllipse(self._square)
         # draw the sky
         bg.setBrush(self.palette().alternateBase())
         bg.drawChord(self._square,
@@ -168,6 +185,82 @@ class SimpleArtificalHorizon(QtWidgets.QFrame):
         rt.end()
 
 
+class HUDArtificalHorizon(AbstractArtificalHorizon):
+    darkPalette = QtGui.QPalette()
+    darkPalette.setColor(QtGui.QPalette.ColorRole.Highlight,  # elements
+                         QtGui.QColor('Gold'))
+    darkPalette.setColor(QtGui.QPalette.ColorRole.BrightText,  # text
+                         QtGui.QColor('ForestGreen'))
+    lightPalette = QtGui.QPalette()
+    lightPalette.setColor(QtGui.QPalette.ColorRole.Highlight,
+                          QtGui.QColor('yellow'))
+    lightPalette.setColor(QtGui.QPalette.ColorRole.BrightText,
+                          QtGui.QColor('lime'))
+
+    def __init__(self, parent: typing.Optional[QtWidgets.QWidget] = None,
+                 flags: typing.Union[QtCore.Qt.WindowFlags, QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget) -> None:
+        super().__init__(parent, flags)
+
+        self.setPalette(self.darkPalette)
+        self.setLineWidth(3)
+        f = self.font()
+        f.setFamily('Comic Sans MS')
+        f.setPointSize(14)
+        self.setFont(f)
+
+        self.blur = QtWidgets.QGraphicsBlurEffect(self)
+        self.blur.setBlurRadius(1.7)
+        self.setGraphicsEffect(self.blur)
+
+    def sizeHint(self) -> QtCore.QSize:
+        return QtCore.QSize(500, 500)
+
+    def setBlurred(self, active):
+        '''enable/disable a slight blur effect to make the HUD more HUD-y'''
+        self.blur.setEnabled(active)
+
+    def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
+        # 1) paint the moving horizon
+        bg = QtGui.QPainter(self)
+        bg.setPen(QtGui.QPen(
+            self.palette().highlight().color(), self.lineWidth()))
+
+        # apply roll
+        bg.translate(self.rect().center())
+        bg.rotate(-self._roll)
+        bg.translate(-self.rect().center())
+
+        # draw the ground
+        h = self._height_from_pitch(self._pitch)
+        bg.drawLine(-1000000, h, self.width()+1000000, h)
+
+        # draw roll indicator
+        bg.setPen(QtCore.Qt.PenStyle.NoPen)
+        bg.setBrush(self.palette().highlight())
+        bg.drawConvexPolygon(self._roll_indicator)
+
+        # draw graduations
+        bg.setPen(QtGui.QPen(
+            self.palette().brightText().color(), 1))
+        for mark, lbl, pos in self._pitch_graduations:
+            bg.drawLine(mark)
+            bg.drawText(pos, lbl)
+
+        bg.end()
+
+        # 2) paint the static overlay
+        rt = QtGui.QPainter(self)
+        rt.setPen(QtGui.QPen(
+            self.palette().highlight().color(), self.lineWidth()))
+        rt.drawPolyline(*self._reticule)
+
+        rt.setPen(QtGui.QPen(
+            self.palette().brightText().color(), self.lineWidth()))
+        for mark in self._roll_graduations:
+            rt.drawLine(mark)
+        rt.end()
+
+
 class HorizonTestWidget(QtWidgets.QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -188,3 +281,21 @@ class HorizonTestWidget(QtWidgets.QWidget):
 
     def sizeHint(self) -> QtCore.QSize:
         return self.testWidget.sizeHint()
+
+
+class FunHorizonTestWidget(HUDArtificalHorizon):
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+
+        from ...sensors import imu
+
+        def updateOrientation():
+            r, p, y = imu.get_current_euler_deg()
+            # print(r, p, y)
+            self.setRoll(r)
+            self.setPitch(p)
+
+        self.timer = QtCore.QTimer(self)
+        self.timer.setInterval(20)
+        self.timer.timeout.connect(updateOrientation)
+        self.timer.start()

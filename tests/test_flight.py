@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtWidgets
 
 from PyQtTest.widgets.utils.reloadable_widget import ReloadableWidget
 from PyQtTest.widgets.flight_indicators.tape_indicator import TapeTestWidget
-from PyQtTest.widgets.flight_indicators.artificial_horizon import HorizonTestWidget
+from PyQtTest.widgets.flight_indicators.artificial_horizon import HorizonTestWidget, FunHorizonTestWidget
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
     mw = ReloadableWidget(
         flags=QtCore.Qt.WindowType.WindowStaysOnTopHint | QtCore.Qt.WindowType.WindowCloseButtonHint,
-        widget=HorizonTestWidget
+        widget=FunHorizonTestWidget
     )
     mw.show()
     print("widget has been shown")
