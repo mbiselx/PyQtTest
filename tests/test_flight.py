@@ -7,23 +7,23 @@ Date    :   10.2022
 Project :   PyQtTest
 '''
 
+import sys
+import logging
+
 from PyQt5 import QtCore, QtWidgets
 
-from PyQtTest.widgets.hit_marker.image_segmentor import ClickableSegmentImage
 from PyQtTest.widgets.utils.reloadable_widget import ReloadableWidget
-from PyQtTest.resources import get_path_to_img
+from PyQtTest.widgets.flight_indicators.tape_indicator import TapeIndicator, TapeTestWidget
+
 
 if __name__ == '__main__':
-    import sys
-
+    logging.basicConfig(level=logging.DEBUG)
     print(f"running '{__file__.split('/')[-1]}' as Qt App")
     app = QtWidgets.QApplication(sys.argv)
 
     mw = ReloadableWidget(
         flags=QtCore.Qt.WindowType.WindowStaysOnTopHint | QtCore.Qt.WindowType.WindowCloseButtonHint,
-        widget=ClickableSegmentImage,
-        img_path=get_path_to_img('car_outline.jpg'),
-        outline_img=True
+        widget=TapeTestWidget
     )
     mw.show()
     print("widget has been shown")

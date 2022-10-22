@@ -15,7 +15,6 @@ __all__ = [
     'ComplexPlaceholder'
 ]
 
-from tkinter import E
 import typing
 import numpy as np
 import numpy.random

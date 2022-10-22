@@ -19,7 +19,7 @@ if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
 
     mw = ReloadableWidget(
-        flags=QtCore.Qt.WindowType.WindowStaysOnTopHint,
+        flags=QtCore.Qt.WindowType.WindowStaysOnTopHint | QtCore.Qt.WindowType.WindowCloseButtonHint,
         widget=NavballWidget
     )
     mw.show()
