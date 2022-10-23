@@ -143,46 +143,45 @@ class SimpleArtificalHorizon(AbstractArtificalHorizon):
 
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
         # 1) paint the moving background
-        bg = QtGui.QPainter(self)
-        bg.setPen(QtCore.Qt.PenStyle.NoPen)  # no outlines
+        with QtGui.QPainter(self) as bg:
+            bg: QtGui.QPainter  # for type hinting
+            bg.setPen(QtCore.Qt.PenStyle.NoPen)  # no outlines
 
-        # apply roll
-        bg.translate(self.rect().center())
-        bg.rotate(-self._roll)
-        bg.translate(-self.rect().center())
+            # apply roll
+            bg.translate(self.rect().center())
+            bg.rotate(-self._roll)
+            bg.translate(-self.rect().center())
 
-        # draw the ground
-        bg.setBrush(self.palette().base())
-        bg.drawEllipse(self._square)
-        # draw the sky
-        bg.setBrush(self.palette().alternateBase())
-        bg.drawChord(self._square,
-                     -self._pitch * 16,
-                     (180+2*self._pitch)*16)
+            # draw the ground
+            bg.setBrush(self.palette().base())
+            bg.drawEllipse(self._square)
+            # draw the sky
+            bg.setBrush(self.palette().alternateBase())
+            bg.drawChord(self._square,
+                         -self._pitch * 16,
+                         (180+2*self._pitch)*16)
 
-        # draw roll indicator
-        bg.setBrush(self.palette().brightText())
-        bg.drawConvexPolygon(self._roll_indicator)
+            # draw roll indicator
+            bg.setBrush(self.palette().brightText())
+            bg.drawConvexPolygon(self._roll_indicator)
 
-        # draw graduations
-        bg.setPen(QtCore.Qt.PenStyle.SolidLine)
-        for mark, lbl, pos in self._pitch_graduations:
-            bg.drawLine(mark)
-            bg.drawText(pos, lbl)
+            # draw graduations
+            bg.setPen(QtCore.Qt.PenStyle.SolidLine)
+            for mark, lbl, pos in self._pitch_graduations:
+                bg.drawLine(mark)
+                bg.drawText(pos, lbl)
 
-        bg.end()
+        # 2) paint the static overlay (foreground
+        with QtGui.QPainter(self) as fg:
+            fg: QtGui.QPainter  # for type hinting
+            fg.setPen(QtGui.QPen(self.palette().brightText().color(),
+                                 self.lineWidth()))
+            fg.drawPolyline(*self._reticule)
 
-        # 2) paint the static overlay
-        rt = QtGui.QPainter(self)
-        rt.setPen(QtGui.QPen(
-            self.palette().brightText().color(), self.lineWidth()))
-        rt.drawPolyline(*self._reticule)
-
-        rt.setPen(QtGui.QPen(
-            self.palette().windowText().color(), self.lineWidth()))
-        for mark in self._roll_graduations:
-            rt.drawLine(mark)
-        rt.end()
+            fg.setPen(QtGui.QPen(self.palette().windowText().color(),
+                                 self.lineWidth()))
+            for mark in self._roll_graduations:
+                fg.drawLine(mark)
 
 
 class HUDArtificalHorizon(AbstractArtificalHorizon):
@@ -218,44 +217,43 @@ class HUDArtificalHorizon(AbstractArtificalHorizon):
 
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
         # 1) paint the moving horizon
-        bg = QtGui.QPainter(self)
-        bg.setPen(QtGui.QPen(
-            self.palette().highlight().color(), self.lineWidth()))
+        with QtGui.QPainter(self) as bg:
+            bg: QtGui.QPainter  # for type hinting
+            bg.setPen(QtGui.QPen(self.palette().highlight().color(),
+                                 self.lineWidth()))
 
-        # apply roll
-        bg.translate(self.rect().center())
-        bg.rotate(-self._roll)
-        bg.translate(-self.rect().center())
+            # apply roll
+            bg.translate(self.rect().center())
+            bg.rotate(-self._roll)
+            bg.translate(-self.rect().center())
 
-        # draw the ground
-        h = self._height_from_pitch(self._pitch)
-        bg.drawLine(-1000000, h, self.width()+1000000, h)
+            # draw the ground
+            h = self._height_from_pitch(self._pitch)
+            bg.drawLine(-1000000, h, self.width()+1000000, h)
 
-        # draw roll indicator
-        bg.setPen(QtCore.Qt.PenStyle.NoPen)
-        bg.setBrush(self.palette().highlight())
-        bg.drawConvexPolygon(self._roll_indicator)
+            # draw roll indicator
+            bg.setPen(QtCore.Qt.PenStyle.NoPen)
+            bg.setBrush(self.palette().highlight())
+            bg.drawConvexPolygon(self._roll_indicator)
 
-        # draw graduations
-        bg.setPen(QtGui.QPen(
-            self.palette().brightText().color(), 1))
-        for mark, lbl, pos in self._pitch_graduations:
-            bg.drawLine(mark)
-            bg.drawText(pos, lbl)
+            # draw graduations
+            bg.setPen(QtGui.QPen(self.palette().brightText().color(),
+                                 1))
+            for mark, lbl, pos in self._pitch_graduations:
+                bg.drawLine(mark)
+                bg.drawText(pos, lbl)
 
-        bg.end()
+        # 2) paint the static overlay (foreground)
+        with QtGui.QPainter(self) as fg:
+            fg: QtGui.QPainter
+            fg.setPen(QtGui.QPen(self.palette().highlight().color(),
+                                 self.lineWidth()))
+            fg.drawPolyline(*self._reticule)
 
-        # 2) paint the static overlay
-        rt = QtGui.QPainter(self)
-        rt.setPen(QtGui.QPen(
-            self.palette().highlight().color(), self.lineWidth()))
-        rt.drawPolyline(*self._reticule)
-
-        rt.setPen(QtGui.QPen(
-            self.palette().brightText().color(), self.lineWidth()))
-        for mark in self._roll_graduations:
-            rt.drawLine(mark)
-        rt.end()
+            fg.setPen(QtGui.QPen(self.palette().brightText().color(),
+                                 self.lineWidth()))
+            for mark in self._roll_graduations:
+                fg.drawLine(mark)
 
 
 class HorizonTestWidget(QtWidgets.QWidget):
