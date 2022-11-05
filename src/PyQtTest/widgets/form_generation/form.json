@@ -1,0 +1,20 @@
+{
+    "Name": {
+        "type": "str"
+    },
+    "Age": {
+        "type": "int"
+    },
+    "Birthday": {
+        "type": "date"
+    },
+    "Favorite Color": {
+        "type": "choice",
+        "default": "blue",
+        "choices": [
+            "red",
+            "green",
+            "blue"
+        ]
+    }
+}
