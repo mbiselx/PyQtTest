@@ -21,27 +21,6 @@ import logging
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
-def widgetFactory(item_type: str) -> QtWidgets.QWidget:
-    if item_type == None:
-        w = QtWidgets.QLabel('No item type set')
-        p = w.palette()
-        p.setColor(p.ColorRole.WindowText, QtCore.Qt.GlobalColor.red)
-        w.setPalette(p)
-        return w
-    elif item_type == 'str':
-        return QtWidgets.QLineEdit()
-    elif item_type == 'int':
-        return QtWidgets.QSpinBox()
-    else:
-        logging.exception(NotImplementedError(
-            f"No widget has been implemented for type {item_type}"))
-        w = QtWidgets.QLabel(f'No widget for item type {item_type}')
-        p = w.palette()
-        p.setColor(p.ColorRole.WindowText, QtCore.Qt.GlobalColor.red)
-        w.setPalette(p)
-        return w
-
-
 class FormDisplay(QtWidgets.QFrame):
     def __init__(self,
                  parent: typing.Optional[QtWidgets.QWidget] = None,
@@ -57,15 +36,85 @@ class FormDisplay(QtWidgets.QFrame):
         with open(filename) as f:
             form_dict: 'dict[str, dict]' = json.load(f)
 
-        widget = self.parseJSONDict(form_dict)
+        self.parseJSONDict(form_dict)
 
     def parseJSONDict(self, form_dict: 'dict[str, dict]'):
         for name, item in form_dict.items():
+            # get the type of the information field
             try:
-                item_type = item['type']
+                item_type = str(item['type']).lower()
             except KeyError:
-                logging.exception(KeyError(f"No type specified for {name}"))
+                logging.error(f"No type specified for {name}")
                 item_type = None
 
-            w = widgetFactory(item_type)
+            # instantiate the widget
+            if item_type == None:
+                w = QtWidgets.QLabel('No item type set')
+                p = w.palette()
+                p.setColor(p.ColorRole.WindowText, QtCore.Qt.GlobalColor.red)
+                w.setPalette(p)
+
+            elif item_type == 'text':
+                w = QtWidgets.QLineEdit(self)
+                if 'default' in item:
+                    w.setText(str(item['default']))
+
+            elif item_type == 'integer':
+                w = QtWidgets.QSpinBox(self)
+                if 'minimum' in item:
+                    w.setMinimum(item['minimum'])
+                if 'maximum' in item:
+                    w.setMaximum(item['maximum'])
+                if 'default' in item:
+                    w.setValue(int(item['default']))
+
+            elif item_type == 'decimal':
+                w = QtWidgets.QDoubleSpinBox(self)
+                if 'minimum' in item:
+                    w.setMinimum(item['minimum'])
+                if 'maximum' in item:
+                    w.setMaximum(item['maximum'])
+                if 'precision' in item:
+                    w.setDecimals(int(item['precision']))
+                if 'default' in item:
+                    w.setValue(float(item['default']))
+
+            elif item_type == 'date':
+                w = QtWidgets.QDateEdit(self)
+                w.setCalendarPopup(True)
+                if 'default' in item:
+                    if str(item['default']).lower() == 'today':
+                        w.setDate(QtCore.QDate.currentDate())
+                    else:
+                        try:
+                            w.setDate(QtCore.QDate.fromString(
+                                str(item['default']),
+                                QtCore.Qt.DateFormat.ISODate))
+                        except Exception as e:
+                            logging.error(
+                                f"could not parse {item['default']} as a date")
+                            logging.exception(e)
+
+            elif item_type == 'choice':
+                w = QtWidgets.QComboBox(self)
+                if 'choices' in item:
+                    w.addItems(item['choices'])
+                else:
+                    logging.error(f"no choices given for item '{name}'")
+                if 'default' in item:
+                    for idx in range(w.count()):
+                        if w.itemText(idx) == item['default']:
+                            w.setCurrentIndex(idx)
+                            break
+                    else:
+                        logging.warning(
+                            f"default choice for item '{name}' could not be found")
+            else:
+                logging.error(
+                    f"No widget has been implemented for type '{item_type}'")
+                w = QtWidgets.QLabel(f"No widget for item type '{item_type}'")
+                p = w.palette()
+                p.setColor(p.ColorRole.WindowText, QtCore.Qt.GlobalColor.red)
+                w.setPalette(p)
+
             self.layout().addRow(name, w)

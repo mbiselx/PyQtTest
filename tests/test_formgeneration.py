@@ -23,7 +23,7 @@ if __name__ == '__main__':
     mw = ReloadableWidget(
         flags=QtCore.Qt.WindowType.WindowStaysOnTopHint | QtCore.Qt.WindowType.WindowCloseButtonHint,
         widget=FormDisplay,
-        form=r"C:\Users\Michael Biselx\Desktop\PyQtTest\src\PyQtTest\widgets\form_generation\form.json")
+        form=r"C:\Users\Michael Biselx\Desktop\PyQtTest\tests\form.json")
     mw.show()
     print("widget has been shown")
 
