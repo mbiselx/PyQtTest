@@ -28,11 +28,22 @@ class FormDisplay(QtWidgets.QFrame):
                  form: typing.Optional[str] = None) -> None:
         super().__init__(parent, flags)
 
-        self.setLayout(QtWidgets.QFormLayout(self))
+        self.form = QtWidgets.QFormLayout()
+
+        export_button = QtWidgets.QPushButton('export', self)
+        export_button.setIcon(self.style().standardIcon(
+            self.style().StandardPixmap.SP_ToolBarHorizontalExtensionButton))
+        export_button.clicked.connect(self.export_callback)
+
+        self.setLayout(QtWidgets.QVBoxLayout(self))
+        self.layout().addLayout(self.form)
+        self.layout().addWidget(export_button)
+
         if form is not None:
             self.fromJSON(form)
 
     def fromJSON(self, filename: str):
+        '''read the form structure from a dict'''
         with open(filename) as f:
             form_dict: 'dict[str, dict]' = json.load(f)
 
@@ -117,4 +128,13 @@ class FormDisplay(QtWidgets.QFrame):
                 p.setColor(p.ColorRole.WindowText, QtCore.Qt.GlobalColor.red)
                 w.setPalette(p)
 
-            self.layout().addRow(name, w)
+            self.form.addRow(name, w)
+
+    def export_callback(self, filename: str = None):
+        formitem_dict = self.toDict()
+
+    def toDict(self) -> 'dict[str, typing.Any]':
+        for row in range(self.form.rowCount()):
+            row_label = self.form.itemAt(row, self.form.ItemRole.LabelRole)
+            row_field = self.form.itemAt(row, self.form.ItemRole.FieldRole)
+            print(row_label.widget().text(), row_field.widget())

@@ -24,7 +24,7 @@
         "type": "date",
         "default": "1996-02-19"
     },
-    "Favorite Color": {
+    "Exclusive Choice": {
         "type": "choice",
         "default": "blue",
         "choices": [
