@@ -2,6 +2,8 @@
 
 This is a personal testing ground for trying stuff out, and for working on my `l337 pR0GrAMm1N' 5K1LL5`. As a consequence, things are not documented very well, and some choices may seem suboptimal. 
 
+NOTE: contrary to good common standard, the `test_*.py` files in [`./tests`](./tests/) are not unittest, but rather 'demos', meant for manally testing. I should probably change this.
+
 ## Installing 
 
 The module is organized as an installable package, mostly so I could test making and installable package - but also because it's nice to be able to `import PyQtTest` from anywhere. 
