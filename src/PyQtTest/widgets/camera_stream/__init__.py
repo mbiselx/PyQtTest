@@ -51,11 +51,10 @@ class CameraStreamer(QtWidgets.QFrame):
                            "no img")
 
         else:
-            scaler = self._image.size().scaled(
-                self.size(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
-            self._image_rect.setTopLeft(QtCore.QPoint((self.width() - scaler.width())//2,
-                                                      (self.height() - scaler.height())//2))
-            self._image_rect.setSize(scaler)
+            self._image_rect.setSize(
+                self._image.size().scaled(self.size(),
+                                          QtCore.Qt.AspectRatioMode.KeepAspectRatio))
+            self._image_rect.moveCenter(self.rect().center())
 
             with QtGui.QPainter(self) as p:
                 p.drawImage(self._image_rect,
