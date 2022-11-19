@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 '''
-A submodule for segmenting a jpg image
+A submodule for loading a form from a JSON or YAML file
 
 Author  :   Michael Biselx
-Date    :   09.2022
+Date    :   11.2022
 Project :   PyQtTest
 '''
 
 __all__ = [
-    'segment_image',
-    'color_image_by_segments',
-    'SegmentImage',
-    'ClickableSegmentImage'
+    'FormDisplay'
 ]
 
 import json
+import yaml
 import typing
 import logging
 
@@ -40,95 +38,97 @@ class FormDisplay(QtWidgets.QFrame):
         self.layout().addWidget(export_button)
 
         if form is not None:
-            self.fromJSON(form)
+            self.fromFile(form)
 
-    def fromJSON(self, filename: str):
+    def fromFile(self, filename: str):
         '''read the form structure from a dict'''
         with open(filename) as f:
-            form_dict: 'dict[str, dict]' = json.load(f)
+            if filename.lower().endswith('json'):
+                prototype: 'dict[str, dict]' = json.load(f)
+            elif filename.lower().endswith(('yaml', 'yml')):
+                prototype: 'dict[str, dict]' = yaml.safe_load(f)
+        self.formFromPrototype(prototype)
 
-        self.parseJSONDict(form_dict)
+    def formFromPrototype(self, prototype: 'dict[str, typing.Any]'):
+        for key, value in prototype.items():
+            if key.lower() == 'fields':
+                for protofield in value:
+                    self.form.addRow(*self.formitemFromProtofield(protofield))
 
-    def parseJSONDict(self, form_dict: 'dict[str, dict]'):
-        for name, item in form_dict.items():
-            # get the type of the information field
-            try:
-                item_type = str(item['type']).lower()
-            except KeyError:
-                logging.error(f"No type specified for {name}")
-                item_type = None
+    def formitemFromProtofield(self, protofield: 'dict[str, dict]'):
+        # get the obligatory fields :
+        try:
+            field_name = 'ERROR'
+            field_name = str(protofield.get('name'))
+            field_type = str(protofield.get('type')).lower()
+        except KeyError as e:
+            logging.error(f"Failed to parse field. Missing key '{e!s}'")
+            return field_name, QtWidgets.QLabel(f"Missing '{e!s}'")
 
-            # instantiate the widget
-            if item_type == None:
-                w = QtWidgets.QLabel('No item type set')
-                p = w.palette()
-                p.setColor(p.ColorRole.WindowText, QtCore.Qt.GlobalColor.red)
-                w.setPalette(p)
+        # make the input widget according to the field
+        if field_type == 'string':
+            w = QtWidgets.QLineEdit(self)
+            w.setText(str(protofield.get('value', '')))
 
-            elif item_type == 'text':
-                w = QtWidgets.QLineEdit(self)
-                if 'default' in item:
-                    w.setText(str(item['default']))
+        elif field_type == 'integer':
+            w = QtWidgets.QSpinBox(self)
+            w.setMinimum(int(protofield.get('minimum', 0)))
+            w.setMaximum(int(protofield.get('maximum', 99)))
+            w.setValue(int(protofield.get('value', 0)))
 
-            elif item_type == 'integer':
-                w = QtWidgets.QSpinBox(self)
-                if 'minimum' in item:
-                    w.setMinimum(item['minimum'])
-                if 'maximum' in item:
-                    w.setMaximum(item['maximum'])
-                if 'default' in item:
-                    w.setValue(int(item['default']))
+        elif field_type == 'decimal':
+            w = QtWidgets.QDoubleSpinBox(self)
+            w.setMinimum(float(protofield.get('minimum', 0)))
+            w.setMaximum(float(protofield.get('maximum', 99)))
+            w.setValue(float(protofield.get('value', 0)))
+            w.setDecimals(int(protofield.get('precision', 2)))
 
-            elif item_type == 'decimal':
-                w = QtWidgets.QDoubleSpinBox(self)
-                if 'minimum' in item:
-                    w.setMinimum(item['minimum'])
-                if 'maximum' in item:
-                    w.setMaximum(item['maximum'])
-                if 'precision' in item:
-                    w.setDecimals(int(item['precision']))
-                if 'default' in item:
-                    w.setValue(float(item['default']))
+        elif field_type == 'date':
+            w = QtWidgets.QDateEdit(self)
+            w.setCalendarPopup(True)
+            value = str(protofield.get('value', 'today'))
 
-            elif item_type == 'date':
-                w = QtWidgets.QDateEdit(self)
-                w.setCalendarPopup(True)
-                if 'default' in item:
-                    if str(item['default']).lower() == 'today':
-                        w.setDate(QtCore.QDate.currentDate())
-                    else:
-                        try:
-                            w.setDate(QtCore.QDate.fromString(
-                                str(item['default']),
-                                QtCore.Qt.DateFormat.ISODate))
-                        except Exception as e:
-                            logging.error(
-                                f"could not parse {item['default']} as a date")
-                            logging.exception(e)
-
-            elif item_type == 'choice':
-                w = QtWidgets.QComboBox(self)
-                if 'choices' in item:
-                    w.addItems(item['choices'])
-                else:
-                    logging.error(f"no choices given for item '{name}'")
-                if 'default' in item:
-                    for idx in range(w.count()):
-                        if w.itemText(idx) == item['default']:
-                            w.setCurrentIndex(idx)
-                            break
-                    else:
-                        logging.warning(
-                            f"default choice for item '{name}' could not be found")
+            if value.lower() != 'today':
+                try:
+                    w.setDate(QtCore.QDate.fromString(
+                        value,
+                        QtCore.Qt.DateFormat.ISODate))
+                except Exception as e:
+                    logging.error(
+                        f"could not parse {value} as a date")
+                    logging.exception(e)
             else:
-                logging.error(
-                    f"No widget has been implemented for type '{item_type}'")
-                w = QtWidgets.QLabel(f"No widget for item type '{item_type}'")
-                p = w.palette()
-                p.setColor(p.ColorRole.WindowText, QtCore.Qt.GlobalColor.red)
-                w.setPalette(p)
+                w.setDate(QtCore.QDate.currentDate())
 
-            self.form.addRow(name, w)
+        elif field_type == 'choice':
+            if protofield.get('exclusive', True):
+                w = QtWidgets.QComboBox(self)
+                w.setEditable(bool(protofield.get('open', False)))
+                w.addItems(map(str, protofield.get('choices', [])))
+                if 'value' in protofield:
+                    w.setCurrentText(str(protofield.get('value')))
+            else:
+                w = QtWidgets.QWidget(self)
+                w.setLayout(QtWidgets.QHBoxLayout(w))
+                w.buttonGroup = QtWidgets.QButtonGroup(w)
+                w.buttonGroup.setExclusive(False)
+                values = protofield.get('value', [])
+                if not isinstance(values, list):
+                    values = [values]
+                values = map(str, values)
+                for choice in map(str, protofield.get('choices', [])):
+                    cb = QtWidgets.QCheckBox(choice)
+                    w.layout().addWidget(cb)
+                    w.buttonGroup.addButton(cb)
+                    if choice in values:
+                        cb.setChecked(True)
+
+        else:
+            logging.error(
+                f"No widget has been implemented for type '{field_type}'")
+            w = QtWidgets.QLabel(f"'{field_type.title()}' not implemented")
+
+        return field_name, w
 
     def export_callback(self, filename: str = None):
         formitem_dict = self.toDict()
