@@ -15,6 +15,7 @@ class CameraStreamer(QtWidgets.QFrame):
                                      QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget) -> None:
         super().__init__(parent, flags)
         self._image = QtGui.QImage() if image is None else image
+        self._image_rect = QtCore.QRect()
 
         self.video = cv2.VideoCapture(0)
 
@@ -44,33 +45,74 @@ class CameraStreamer(QtWidgets.QFrame):
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
 
         if self._image.isNull():
-
             with QtGui.QPainter(self) as p:
-                p: QtGui.QPainter
-                p.drawText(
-                    a0.rect(), QtCore.Qt.AlignmentFlag.AlignCenter, "no img")
+                p.drawText(self.rect(),
+                           QtCore.Qt.AlignmentFlag.AlignCenter,
+                           "no img")
 
         else:
-            if self._image.height()*a0.rect().width() > self._image.width()*a0.rect().height():
-                h = a0.rect().height()
-                w = self._image.width()/self._image.height()*a0.rect().height()
-            else:
-                h = self._image.height()/self._image.width()*a0.rect().width()
-                w = a0.rect().width()
-
-            self._image_rect = QtCore.QRect(
-                (a0.rect().width() - w)//2, (a0.rect().height() - h)//2,
-                w, h)
+            scaler = self._image.size().scaled(
+                self.size(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+            self._image_rect.setTopLeft(QtCore.QPoint((self.width() - scaler.width())//2,
+                                                      (self.height() - scaler.height())//2))
+            self._image_rect.setSize(scaler)
 
             with QtGui.QPainter(self) as p:
-                p: QtGui.QPainter
                 p.drawImage(self._image_rect,
-                            self._image, self._image.rect())
+                            self._image,
+                            self._image.rect())
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         self.timer.stop()
         self.video.release()
+        self.deleteLater()
         return super().closeEvent(a0)
+
+
+class PathWidget(QtWidgets.QFrame):
+    pathChanged = QtCore.pyqtSignal()
+
+    def __init__(self, parent: typing.Optional[QtWidgets.QWidget] = None,
+                 flags: typing.Union[QtCore.Qt.WindowFlags,
+                                     QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget) -> None:
+        super().__init__(parent, flags)
+
+        self._path_segments: 'list[QtWidgets.QLineEdit]' = []
+
+        self.setLayout(QtWidgets.QHBoxLayout(self))
+        self.layout().setSpacing(0)
+        self.layout().setContentsMargins(*4*[0])
+        self.setContentsMargins(*4*[0])
+
+    def _remove_all(self):
+        for i in range(self.layout().count()):
+            w = self.layout().takeAt(i)
+            if isinstance(w, QtWidgets.QLineEdit):
+                w.editingFinished.disconnect(self.pathChanged)
+
+    def setDepth(self, depth: int):
+        if len(self._path_segments) > 0:
+            self._remove_all()
+
+        self._path_segments = [QtWidgets.QLineEdit(self) for i in range(depth)]
+
+        for segment in self._path_segments:
+            self.layout().addWidget(segment)
+            if segment is not self._path_segments[-1]:
+                self.layout().addWidget(QtWidgets.QLabel(os.sep, self))
+            segment.editingFinished.connect(self.pathChanged)
+
+    def setPath(self, path: str):
+        path_segments = path.split(os.sep)
+
+        if len(self._path_segments) < len(path_segments):
+            self.setDepth(len(path_segments))
+
+        for segment_lbl, segment_txt in zip(self._path_segments, path_segments):
+            segment_lbl.setText(segment_txt)
+
+    def path(self) -> str:
+        return os.sep.join(segment.text() for segment in self._path_segments)
 
 
 class SimpleCamera(QtWidgets.QFrame):
@@ -81,12 +123,17 @@ class SimpleCamera(QtWidgets.QFrame):
         super().__init__(parent, flags)
 
         self.stream_display = CameraStreamer(self)
+        self.stream_display.setMinimumSize(200, 200)
 
-        self.destination_folder = destination_folder
+        self._destination_folder = destination_folder
 
-        self.destination_selector = QtWidgets.QToolButton(self)
-        self.destination_selector.setText('...')
-        self.destination_selector.clicked.connect(self.setDestinationFolder)
+        self.destination_selector = PathWidget(self)
+        self.destination_selector.setDepth(3)
+        self.destination_selector.pathChanged.connect(self.setDestinationPath)
+
+        self.root_selector = QtWidgets.QToolButton(self)
+        self.root_selector.setText('...')
+        self.root_selector.clicked.connect(self.setRootFolder)
 
         self.trigger_button = QtWidgets.QPushButton('photo', self)
         self.trigger_button.clicked.connect(self.takePhoto)
@@ -94,29 +141,44 @@ class SimpleCamera(QtWidgets.QFrame):
 
         # layout stuff
         bottom_bar = QtWidgets.QHBoxLayout()
-        bottom_bar.addWidget(self.trigger_button)
+        bottom_bar.addWidget(self.root_selector)
         bottom_bar.addWidget(self.destination_selector)
+        bottom_bar.addWidget(self.trigger_button)
 
         self.setLayout(QtWidgets.QVBoxLayout(self))
         self.layout().addWidget(self.stream_display)
         self.layout().addLayout(bottom_bar)
 
-    def setDestinationFolder(self, *, folder: str = None):
+    def setRootFolder(self, *, folder: str = None):
         if folder is None:
             folder = QtWidgets.QFileDialog.getExistingDirectory(self)
             if folder == '':
                 return
 
         logging.debug(
-            f'{self.__class__.__name__}: destination folder set to {folder}')
-        self.destination_folder = folder
+            f'{self.__class__.__name__}: root folder set to {folder}')
+        self._root_folder = folder
         self.trigger_button.setEnabled(True)
 
+    def setDestinationPath(self, *, folder: str = None):
+        self._destination_folder = os.sep.join(
+            (self._root_folder, self.destination_selector.path()))
+
+        logging.debug(
+            f'{self.__class__.__name__}: destination folder set to {self._destination_folder}')
+
     def takePhoto(self):
+        # create outfile name based on date and time
         date = QtCore.QDate.currentDate().toString(QtCore.Qt.DateFormat.ISODate)
         time = QtCore.QTime.currentTime().toString('hh-mm-ss')
-        outfile = os.sep.join((self.destination_folder,
+        outfile = os.sep.join((self._destination_folder,
                                f"{date}-{time}_webcam.jpg"))
+
+        # check if destination folder exists, and if not, create it
+        if not (os.path.isdir(self._destination_folder)):
+            os.makedirs(self._destination_folder)
+
+        # save image
         if not self.stream_display.image().save(outfile):
             logging.error(
                 f"{self.__class__.__name__}: failed to write {outfile}")
