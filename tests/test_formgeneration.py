@@ -13,7 +13,7 @@ import logging
 from PyQt5 import QtCore, QtWidgets
 
 from PyQtTest.widgets.utils.reloadable_widget import ReloadableWidget
-from PyQtTest.widgets.form_generation.form_generation import FormDisplay
+from PyQtTest.widgets.form_generation.form_generation import FormDisplay, ListDisplay
 
 from PyQtTest.resources import get_path_to_template
 
@@ -24,8 +24,11 @@ if __name__ == '__main__':
 
     mw = ReloadableWidget(
         flags=QtCore.Qt.WindowType.WindowStaysOnTopHint | QtCore.Qt.WindowType.WindowCloseButtonHint,
-        widget=FormDisplay,
-        form=get_path_to_template('testing_template.yaml'))
+        # widget=FormDisplay,
+        # form=get_path_to_template('testing_template.yaml')
+        widget=ListDisplay,
+        form=get_path_to_template('testing_lists.yaml')
+    )
     mw.show()
     print("widget has been shown")
 

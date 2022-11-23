@@ -1,0 +1,36 @@
+# this is a template used for testing and demo
+
+
+# # group prototype:
+name : group
+type : group
+
+item_1:
+  name: item 1
+  type: integer
+  value : 1
+
+
+list_prototype:
+  name: List
+  type: list
+  choices:
+    - name : String
+      type : string 
+    - name : Integer
+      type : integer   
+    - name : Sublist
+      type : list
+      choices: 
+        - name : Integer
+          type : integer
+  value: 
+    type: group
+    string_1:
+      name: arbitrary
+      type: string
+    integer_1:
+      name: asdf
+      type: integer
+
+
