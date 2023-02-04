@@ -24,10 +24,10 @@ if __name__ == '__main__':
 
     mw = ReloadableWidget(
         flags=QtCore.Qt.WindowType.WindowStaysOnTopHint | QtCore.Qt.WindowType.WindowCloseButtonHint,
-        # widget=FormDisplay,
-        # form=get_path_to_template('testing_template.yaml')
-        widget=ListDisplay,
-        form=get_path_to_template('testing_lists.yaml')
+        widget=FormDisplay,
+        form=get_path_to_template('testing_template.yaml')
+        # widget=ListDisplay,
+        # form=get_path_to_template('testing_lists.yaml')
     )
     mw.show()
     print("widget has been shown")
