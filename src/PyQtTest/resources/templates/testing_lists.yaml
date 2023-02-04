@@ -2,35 +2,35 @@
 
 
 # # group prototype:
-name : group
+name : Demo Group
 type : group
 
 item_1:
-  name: item 1
+  name: Demo Integer 
   type: integer
   value : 1
 
 
 list_prototype:
-  name: List
+  name: Demo List
   type: list
   choices:
-    - name : String
+    - name : List Item 
       type : string 
-    - name : Integer
+    - name : List Item
       type : integer   
-    - name : Sublist
+    - name : List Item
       type : list
       choices: 
-        - name : Integer
+        - name : Sublist Integer
           type : integer
   value: 
     type: group
     string_1:
-      name: arbitrary
+      name: Existing String
       type: string
     integer_1:
-      name: asdf
+      name: Existing Integer
       type: integer
 
 
