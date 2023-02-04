@@ -13,7 +13,7 @@ __all__ = [
 ]
 
 import typing
-import traceback
+import logging
 from importlib import import_module, reload
 
 from PyQt5 import QtCore, QtWidgets
@@ -24,9 +24,10 @@ from .placeholders import PlaceHolder
 class ReloadWidgetAction(QtWidgets.QAction):
     '''
     a menu action to reload the target widgets and create new instances thereof.
-    Shortcut : [CTRL + W]
+    Shortcut : [CTRL + R]
 
-    ! NOTE : this only relaods the file the widget is defined in, not all of its dependencies 
+    NOTE : dependencies of the widget must be marked in a special 
+    class-variable `__depends__` list in order to be reloaded
 
     @parameters : 
     * `parent`  :   the parent QtWidget
@@ -37,9 +38,10 @@ class ReloadWidgetAction(QtWidgets.QAction):
     def __init__(self, parent: typing.Optional[QtCore.QObject],
                  targets: typing.Dict[QtWidgets.QWidget, typing.Iterator] = {}):
         super().__init__(parent)
+        self.logger = logging.getLogger(self.__class__.__name__)
 
         self.setText("Reload &Widget")
-        self.setShortcut(QtCore.Qt.Modifier.CTRL + QtCore.Qt.Key.Key_W)
+        self.setShortcut(QtCore.Qt.Modifier.CTRL + QtCore.Qt.Key.Key_R)
         tmp = QtWidgets.QWidget()
         self.setIcon(tmp.style().standardIcon(
             QtWidgets.QStyle.StandardPixmap.SP_BrowserReload))
@@ -58,31 +60,59 @@ class ReloadWidgetAction(QtWidgets.QAction):
         '''set reload targets'''
         if not isinstance(targets, dict):
             raise TypeError(
-                f"reload targets must be a a dict of widgets and their init args, not {targets.__class__}")
+                f"reload targets must be a dict of widgets and their init args, not {targets.__class__}")
         self._targets = targets
 
     def addTargets(self,  targets: typing.Union[QtWidgets.QWidget, typing.List[QtWidgets.QWidget]] = []):
         '''add reload targets'''
         if not isinstance(targets, dict):
             raise TypeError(
-                f"reload targets must be a a dict of widgets and their init args, not {targets.__class__}")
+                f"reload targets must be a dict of widgets and their init args, not {targets.__class__}")
         self._targets = dict(zip(**self._targets, **targets))
+
+    def reload_class(self, target_class: type) -> type:
+        '''deep-reload target_class' module and get the new target_class'''
+        if target_class.__module__ != '__main__':
+            module = reload(import_module(target_class.__module__))
+            target_class = getattr(module, target_class.__name__)
+        else:
+            self.logger.warning(
+                f"can't reload {target_class.__name__} from '__main__'")
+
+        # check if the new class has any dependencies and reload these:
+        if hasattr(target_class, '__depends__'):
+            self.logger.debug(
+                f"reloading dependencies of {target_class.__name__}")
+            for depend in target_class.__depends__:
+                self.reload_class(depend)
+
+            # now we have to reload the module again, to make sure the
+            # reloaded dependencies are taken into account
+            if target_class.__module__ != '__main__':
+                module = reload(import_module(target_class.__module__))
+                target_class = getattr(module, target_class.__name__)
+
+        return target_class
 
     def reloadTargets(self):
         '''reload targets from their modules'''
+        self.logger.info("reloading targets")
         reloaded = []
         for target, args in self.targets.items():
             try:  # don't suicide if something is wrong in new code
-                # reload module and get an instance of the new class
-                module = reload(import_module(target.__module__))
-                reloaded.append(
-                    getattr(module, target.__class__.__name__)(**args))
+
+                # reload module and get the new class
+                target_class = self.reload_class(target.__class__)
+
+                # create a new instance of the target class
+                reloaded.append(target_class(**args))
 
                 # mark the old target for destruction
                 target.deleteLater()
 
-            except Exception:
-                traceback.print_exc()  # notify user about what happened
+            except Exception as e:
+                self.logger.error(f'Failed to reload {target.__class__}')
+                self.logger.exception(e)
                 reloaded.append(target)  # re-use previous target
 
         # rebuild dict
@@ -90,12 +120,13 @@ class ReloadWidgetAction(QtWidgets.QAction):
 
         # notify subscribers
         self.reloadFinished.emit(reloaded)
+        self.logger.info("targets reloaded")
 
 
 class ReloadStyleSheetAction(QtWidgets.QAction):
     '''
     a menu action to reload the target widget's stylesheet.
-    Shortcut : [CTRL + Q]
+    Shortcut : [CTRL + SHIFT + R]
 
     @parameters : 
     * `parent`  :   the parent QtWidget
@@ -106,9 +137,11 @@ class ReloadStyleSheetAction(QtWidgets.QAction):
     def __init__(self, parent: typing.Optional[QtCore.QObject],
                  target: typing.Optional[str] = None):
         super().__init__(parent)
+        self.logger = logging.getLogger(self.__class__.__name__)
 
         self.setText("Reload &QSS")
-        self.setShortcut(QtCore.Qt.Modifier.CTRL + QtCore.Qt.Key.Key_Q)
+        self.setShortcut(QtCore.Qt.Modifier.CTRL +
+                         QtCore.Qt.Modifier.SHIFT + QtCore.Qt.Key.Key_R)
         tmp = QtWidgets.QWidget()
         self.setIcon(tmp.style().standardIcon(
             QtWidgets.QStyle.StandardPixmap.SP_BrowserReload))
@@ -123,11 +156,17 @@ class ReloadStyleSheetAction(QtWidgets.QAction):
         self.loadStyleSheetFile()
 
     def loadStyleSheetFile(self):
-        if self._stylesheet is not None:
-            with open(self._stylesheet, 'r') as file:
-                styleSheet = file.read()
-            self.parentWidget().setStyleSheet(styleSheet)
-            self.reloadFinished.emit()
+        self.logger.info("reloading stylesheet")
+
+        if self._stylesheet is None:
+            self.logger.warning("no stylesheet")
+            return
+
+        with open(self._stylesheet, 'r') as file:
+            styleSheet = file.read()
+        self.parentWidget().setStyleSheet(styleSheet)
+        self.reloadFinished.emit()
+        self.logger.info("stylesheet reloaded")
 
 
 class SeparatorAction(QtWidgets.QAction):
@@ -142,8 +181,8 @@ class ReloadableWidget(QtWidgets.QWidget):
     '''
     a widget which implements the reload action and acts as a wrapper around another widget.
     It can also reload the sylesheet at runtime.
-    Shortcut : [CTRL + W] -> reloads widget
-    Shortcut : [CTRL + Q] -> reloads stylesheet
+    Shortcut : [CTRL + R] -> reloads widget
+    Shortcut : [CTRL + SHIFT + R] -> reloads stylesheet
 
     @parameters : 
     * `parent`      : (optional) the parent QtWidget

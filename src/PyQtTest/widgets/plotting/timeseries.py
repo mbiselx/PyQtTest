@@ -27,6 +27,9 @@ except ImportError:  # in case we're using the demo
 
 class InspectionPlot(pg.PlotWidget):
     '''A plot widget used for close-up timeseries inspection'''
+    __depends__ = [
+        ColorIterator
+    ]
 
     def __init__(self,
                  parent=None,
@@ -65,6 +68,10 @@ class MasterTimeLinePlot(pg.PlotWidget):
     '''The master timeseries plot, which can control other inspection plots'''
     sigRegionChanged = QtCore.pyqtSignal(object)
     sigPositionChanged = QtCore.pyqtSignal(pg.InfiniteLine)
+
+    __depends__ = [
+        ColorIterator
+    ]
 
     def __init__(self,
                  parent=None,
