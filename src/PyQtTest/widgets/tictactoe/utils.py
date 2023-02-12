@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from typing import Optional, Any, Generator, List, overload
 
 __all__ = [
-    'X', 'O',
+    'X', 'O', 'N',
+    'State',
+    'Player',
     'Field',
     'Board',
     'Move',
@@ -18,7 +20,7 @@ __all__ = [
 class State:
     '''the only values allowed for a state are `X`, `O` or (space)'''
     ALLOWED_STATES: 'set[State]'
-    PLAYER_STATES: 'set[State]'
+    PLAYER_STATES: 'set[Player]'
 
     def __init__(self, representation: str) -> None:
         self.__representation = str(representation)
@@ -26,23 +28,34 @@ class State:
     def __repr__(self) -> str:
         return self.__representation
 
-    def is_valid(state: 'State | Any') -> bool:
+    @overload
+    @staticmethod
+    def is_valid(__state: 'State | Any') -> bool: ...
+
+    @overload
+    def is_valid(self) -> bool: ...
+
+    def is_valid(self: 'State | Any') -> bool:
         '''check if the given state is a valid state'''
-        return state in __class__.ALLOWED_STATES
+        return self in __class__.ALLOWED_STATES
 
-    def is_player(state: 'State | Any') -> bool:
-        '''check if the given state is a valid player'''
-        return state in __class__.PLAYER_STATES
+    @overload
+    @staticmethod
+    def is_player(__player: 'Player | Any') -> bool: ...
 
-    @abstractmethod
-    def __next__(self) -> 'State':
-        '''get alternating states'''  # implemented later
-        pass
+    @overload
+    def is_player(self) -> bool: ...
+
+    def is_player(self: 'Player | Any') -> bool:
+        '''check if the given player is a valid player'''
+        return self in __class__.PLAYER_STATES
 
 
 class Player(State):
     '''decorator, so that we can differentiate between players and field states'''
-    pass
+
+    @abstractmethod
+    def __next__(self) -> 'Player': ...
 
 
 # create the allowed Players / States
@@ -53,7 +66,7 @@ N = State(' ')  # None
 # now add these to the Player/State classes
 State.ALLOWED_STATES = {X, O, N}  # this also sets Player.ALLOWED_STATES
 State.PLAYER_STATES = {X, O}  # this also sets Player.PLAYER_STATES
-State.__next__ = lambda s: O if s is X else X
+Player.__next__ = lambda self: O if self is X else X
 
 
 class Field:
@@ -125,6 +138,14 @@ class Board:
         # this is a bit clunky, but i'm doing it this way for symmetry, okay ?
         return (list(self[f(i), i] for i in range(self._size)) for f in (lambda i: i, lambda i: self.size-i-1))
 
+    def is_empty(self) -> bool:
+        '''return whether or not the board is empty'''
+        return all(all(f.state == N for f in row) for row in self._fields)
+
+    def is_full(self) -> bool:
+        '''return whether or not the board is full'''
+        return all(all(f.state != N for f in row) for row in self._fields)
+
     def clear(self):
         '''clear the board'''
         for row in self._fields:
@@ -144,12 +165,16 @@ class Board:
             return True
         return False
 
-    def winning(self) -> 'Player | None':
+    def winning_player(self) -> 'Player | None':
         '''get the player currently winning'''
         for player in Player.PLAYER_STATES:
             if self.has_won(player):
                 return player
         return None
+
+    def stalemate(self) -> bool:
+        '''has a stalemate occurred ?'''
+        return self.is_full() and self.winning_player() is None
 
 
 @dataclass
@@ -183,17 +208,18 @@ class Game(Board):
         '''the player whose move it will be next turn'''
         return next(self.current_player)
 
-    def find_move(self, *index: 'tuple[int, int]') -> Move:
+    def find_move(self, __row: int, __column: int) -> Move:
         '''find the move for `index` in history'''
-        return next(move for move in self._history if move.index == index)
+        return next(move for move in self._history if move.index == (__row, __column))
 
     def apply_move(self, move: Move):
         '''
         Raises Move.IllegalMove on an illegal move.
         '''
         # check if the move is from a valid player
-        if not Player.is_player(move.player):
-            raise Move.IllegalMove(move, f'{move.player} is not a player')
+        if not (isinstance(move.player, Player) and move.player.is_player()):
+            raise Move.IllegalMove(
+                move, f'{move.player} is not a valid player')
 
         # check if the move is in a valid field
         if self[move.index] is not N:
@@ -231,6 +257,9 @@ class Game(Board):
             if move.player is None:
                 move.player = self.current_player
         else:
+            if not isinstance(__column, int):
+                raise TypeError("require row, column to be of type "
+                                f"'int', not {type(__column)}")
             move = Move((__row_or_move, __column),
                         player or self.current_player)
 
@@ -274,7 +303,7 @@ class Game(Board):
         outlist = []
 
         if player is None:
-            player = self.winning()
+            player = self.winning_player()
             if player is None:  # still `None` means nobody is winning
                 return outlist  # empty list
 
