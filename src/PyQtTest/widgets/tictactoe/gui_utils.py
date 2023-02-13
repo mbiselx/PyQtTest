@@ -1,6 +1,7 @@
 '''
 this is where the face of the game lives
 '''
+
 import logging
 from typing import Union, Optional
 
@@ -24,17 +25,18 @@ class TicTacToeField(QtWidgets.QAbstractButton):
         super().__init__(parent)
         self.index = index
         self._state = state
+        self._readonly = False
 
         self._illegal_animation = QtCore.QVariantAnimation(self)
         self._illegal_animation.setStartValue(self.FORBID_COLOR)
         self._illegal_animation.setEndValue(self.OCCUPIED_COLOR)
-        self._illegal_animation.setDuration(500)
+        self._illegal_animation.setDuration(250)
         self._illegal_animation.valueChanged.connect(self.setColor)
 
         self._stalemate_animation = QtCore.QVariantAnimation(self)
         self._stalemate_animation.setStartValue(self.FORBID_COLOR)
         self._stalemate_animation.setEndValue(self.STALEMATE_COLOR)
-        self._stalemate_animation.setDuration(500)
+        self._stalemate_animation.setDuration(1500)
         self._stalemate_animation.valueChanged.connect(self.setColor)
 
         self._win_animation = QtCore.QVariantAnimation(self)
@@ -47,6 +49,12 @@ class TicTacToeField(QtWidgets.QAbstractButton):
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Expanding
         )
+
+    def readOnly(self) -> bool:
+        return self._readonly
+
+    def setReadOnly(self, readonly) -> bool:
+        self._readonly = readonly
 
     def minimumSizeHint(self) -> QtCore.QSize:
         return QtCore.QSize(50, 50)
@@ -62,6 +70,7 @@ class TicTacToeField(QtWidgets.QAbstractButton):
         p = self.palette()
         p.setColor(p.ColorRole.Base, color)
         self.setPalette(p)
+        self.update()
 
     def illegalMove(self):
         '''an illegal move was made, and the user should receive feedback'''
@@ -83,13 +92,26 @@ class TicTacToeField(QtWidgets.QAbstractButton):
             self.setColor(self.OCCUPIED_COLOR)
         else:
             self.setColor(self.FREE_COLOR)
+        self.update()
 
-    def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
+    def clear(self):
+        self._illegal_animation.stop()
+        self._stalemate_animation.stop()
+        self._win_animation.stop()
+        self.setState(N)
+
+    def mousePressEvent(self,event: QtGui.QMouseEvent) -> None:
+        if self._readonly:
+            event.ignore()
+        else:
+            return super().mousePressEvent(event)
+
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         # adapt the font to current size
         f = self.font()
         f.setPixelSize(int(0.8*self.contentsRect().height()))
         self.setFont(f)
-        return super().resizeEvent(a0)
+        return super().resizeEvent(event)
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         '''draw the field'''
@@ -187,26 +209,34 @@ class TicTacToeBoard(QtWidgets.QFrame):
         if not self._game_over:
             self.clicked.emit(Move(button.index))
 
-    def restartGame(self):
+    def clearBoard(self):
         '''restart the game'''
         self._game_over = False
         self.board.clear()
-        self.updateField()
+        for btn in self.buttongroup.buttons():
+            btn.clear()
 
 
 class TicTacToeGame(QtWidgets.QFrame):
+    '''basic structure of the games'''
+    moveFinished = QtCore.pyqtSignal()
+    winningPlayer = QtCore.pyqtSignal(Player)
+    stalemate = QtCore.pyqtSignal()
+
     __depends__ = [
+        TicTacToeField,
         TicTacToeBoard,
         Game
     ]
 
     def __init__(self,
                  parent: Optional[QtWidgets.QWidget] = None,
+                 game: Optional[Game] = None, 
                  flags: Union[QtCore.Qt.WindowFlags,
                               QtCore.Qt.WindowType] = QtCore.Qt.WindowType.Widget) -> None:
         super().__init__(parent, flags)
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.game = Game()
+        self.game = game or Game()
 
         # actions
         self._clearAction = QtWidgets.QAction('&Clear')
@@ -216,35 +246,73 @@ class TicTacToeGame(QtWidgets.QFrame):
         self.addAction(self._clearAction)
 
         # widgets
+        self.currentPlayer = TicTacToeField(self)
+        self.currentPlayer.setReadOnly(True)
+        self.currentPlayer.setMaximumSize(QtCore.QSize(50,50))
+        self.setCurrentPlayer(self.game.current_player)
+        self.stalemate.connect(self.currentPlayer.clear)
+        self.winningPlayer.connect(self.currentPlayer.setState)
+
         self.fieldWidget = TicTacToeBoard(self.game, self)
-        self.fieldWidget.clicked.connect(self._makeGameMove)
+        self.fieldWidget.clicked.connect(self._applyMove)
+        self.stalemate.connect(self.fieldWidget.hasStalemated)
+        self.winningPlayer.connect(
+            lambda p: self.fieldWidget.hasWon(self.game.winning_moves(p)))
 
         self.clearBtn = QtWidgets.QPushButton(self._clearAction.text())
         self.clearBtn.setIcon(self._clearAction.icon())
         self.clearBtn.clicked.connect(self._clearAction.trigger)
 
+        self.moveFinished.connect(self._autoNextMove)
+
         # do layout
+        topBar = QtWidgets.QHBoxLayout()
+        topBar.addWidget(QtWidgets.QLabel("Current Player : "))
+        topBar.addWidget(self.currentPlayer)
         self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().addLayout(topBar)
         self.layout().addWidget(self.fieldWidget)
         self.layout().addWidget(self.clearBtn)
 
-    def _makeGameMove(self, move: Move):
+    def setCurrentPlayer(self, player: Player):
+        self.currentPlayer.setState(player)
+
+    def _clearGame(self):
+        self.fieldWidget.clearBoard()
+        self.setCurrentPlayer(self.game.current_player)
+
+    def nextMove(self) -> 'Move | None':
+        '''make the next move'''
+        return None
+
+    def _applyMove(self, move: Move):
+        if self.applyMove(move) and not self.evaluateGame():
+            self.moveFinished.emit()
+
+    def _autoNextMove(self):
+        next_move = self.nextMove()
+        if next_move is not None:
+            self._applyMove(next_move)
+
+    def applyMove(self, move: Move) -> bool:
         try:
             self.game.move(move)
             self.fieldWidget.updateField()
+            self.setCurrentPlayer(self.game.current_player)
+            return True
         except Move.IllegalMove:
             self.fieldWidget.illegalMove(move)
-            return
+            return False
 
+    def evaluateGame(self) -> bool:
         winning_player = self.game.winning_player()
-        if winning_player is None:
-            if self.game.is_full():
-                self.logger.debug("stalemate detected")
-                self.fieldWidget.hasStalemated()
-        else:
+        if winning_player is not None:
             self.logger.debug(f"{winning_player} has won")
-            indices = self.game.winning_moves(winning_player)
-            self.fieldWidget.hasWon(indices)
-
-    def _clearGame(self):
-        self.fieldWidget.restartGame()
+            self.winningPlayer.emit(winning_player)
+            return True
+        elif self.game.is_full():
+            self.logger.debug("stalemate detected")
+            self.stalemate.emit()
+            return True
+        else:
+            return False # normal game round

@@ -72,7 +72,15 @@ Player.__next__ = lambda self: O if self is X else X
 class Field:
     '''represent a single field on the TicTacToe board'''
 
-    def __init__(self, state: Optional[State] = None) -> None:
+    def __init__(self, index: 'tuple[int, int]', state: Optional[State] = None) -> None:
+        if not isinstance(index, tuple): 
+            raise TypeError(f"Expected tuple[int, int], not {type(index)!s}")
+        if not len(index) == 2 : 
+            raise ValueError(f"Expected tuple of length 2, not {len(index)}")
+        if not (isinstance(index[0], int) and isinstance(index[1], int)) : 
+            raise TypeError(f"Expected tuple[int, int], not tuple[{type(index[0])!s}, {type(index[1])!s}]")
+
+        self._index = index
         self.state = state or N
 
     @property
@@ -87,18 +95,30 @@ class Field:
         self.__state = value
 
     def clear(self):
+        '''clear the field's state'''
         self.__state = N
 
     def __str__(self) -> str:
         return f' {self.state} '  # padded
 
+    @property
+    def index(self) -> 'tuple[int, int]':
+        return self._index
+        
+    @property
+    def row(self) -> int:
+        return self._index[0]
+
+    @property
+    def column(self) -> int:
+        return self._index[1]
 
 class Board:
     '''represent a TicTacToe board'''
 
     def __init__(self, size: int = 3) -> None:
         self._size = size
-        self._fields = [[Field() for i in range(size)] for i in range(size)]
+        self._fields = [[Field((i,j)) for j in range(size)] for i in range(size)]
 
     @property
     def size(self) -> int:
@@ -125,18 +145,22 @@ class Board:
             raise ValueError(f'expeced 2 indices -- got {len(__index)}')
         self._fields[__index[0]][__index[1]].state = __state
 
-    def rows(self) -> Generator[List[State], None, None]:
-        '''return a row-wise generator containing the states of the fields'''
-        return (list(f.state for f in row) for row in self._fields)
+    def rows(self) -> Generator[List[Field], None, None]:
+        '''return a row-wise generator containing the fields of the board'''
+        return (row for row in self._fields)
 
-    def columns(self) -> Generator[List[State], None, None]:
-        '''return a column-wise generator containing the states of the fields'''
-        return (list(f.state for f in (row[i] for row in self._fields)) for i in range(self._size))
+    def columns(self) -> Generator[List[Field], None, None]:
+        '''return a column-wise generator containing the fields of the board'''
+        return (list(f for f in (row[i] for row in self._fields)) for i in range(self._size))
 
-    def diagonals(self) -> Generator[List[State], None, None]:
+    def diagonals(self) -> Generator[List[Field], None, None]:
         '''return a generator containing the two diagonals of the board'''
         # this is a bit clunky, but i'm doing it this way for symmetry, okay ?
-        return (list(self[f(i), i] for i in range(self._size)) for f in (lambda i: i, lambda i: self.size-i-1))
+        return (list(self._fields[l(i)][i] for i in range(self._size)) for l in (lambda i: i, lambda i: self.size-i-1))
+
+    def all_win_conditions(self)-> Generator[List[Field], None, None]:
+        '''return a generator containing the lists of fields for all win-conditions of the board'''
+        return (*self.rows(), *self.columns(), *self.diagonals())
 
     def is_empty(self) -> bool:
         '''return whether or not the board is empty'''
@@ -148,22 +172,13 @@ class Board:
 
     def clear(self):
         '''clear the board'''
-        for row in self._fields:
+        for row in self.rows():
             for field in row:
                 field.clear()
 
     def has_won(self, player: Player) -> bool:
         '''check if a given player has won'''
-        # check rows :
-        if any(all(state == player for state in row) for row in self.rows()):
-            return True
-        # check columns :
-        if any(all(state == player for state in col) for col in self.columns()):
-            return True
-        # check diagonals :
-        if any(all(state == player for state in diag) for diag in self.diagonals()):
-            return True
-        return False
+        return any(all(field.state==player for field in wincon) for wincon in self.all_win_conditions())
 
     def winning_player(self) -> 'Player | None':
         '''get the player currently winning'''
@@ -307,19 +322,19 @@ class Game(Board):
             if player is None:  # still `None` means nobody is winning
                 return outlist  # empty list
 
-        for r, row in enumerate(self.rows()):
-            if all(f == player for f in row):
-                outlist.extend(self.find_move(r, c) for c in range(self.size))
+        for row in self.rows():
+            if all(f.state == player for f in row):
+                outlist.extend(self.find_move(row[0].row, c) for c in range(self.size))
 
-        for c, col in enumerate(self.columns()):
-            if all(f == player for f in col):
-                outlist.extend(self.find_move(r, c) for r in range(self.size))
+        for col in self.columns():
+            if all(f.state == player for f in col):
+                outlist.extend(self.find_move(r, col[0].column) for r in range(self.size))
 
         # ughhh the diagonals are so annoying
         descending, ascending = self.diagonals()
-        if all(f == player for f in descending):
+        if all(f.state == player for f in descending):
             outlist.extend(self.find_move(i, i) for i in range(self.size))
-        if all(f == player for f in ascending):
+        if all(f.state == player for f in ascending):
             outlist.extend(self.find_move(self.size-1-i, i)
                            for i in range(self.size))
 
