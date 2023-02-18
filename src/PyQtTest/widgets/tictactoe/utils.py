@@ -101,6 +101,9 @@ class Field:
     def __str__(self) -> str:
         return f' {self.state} '  # padded
 
+    def __contains__(self, other:Any) -> bool:
+        return self.state == other
+
     @property
     def index(self) -> 'tuple[int, int]':
         return self._index

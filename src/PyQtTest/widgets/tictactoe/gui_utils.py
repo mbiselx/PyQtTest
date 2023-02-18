@@ -242,7 +242,7 @@ class TicTacToeGame(QtWidgets.QFrame):
         self._clearAction = QtWidgets.QAction('&Clear')
         self._clearAction.setIcon(self.style().standardIcon(
             QtWidgets.QStyle.StandardPixmap.SP_LineEditClearButton))
-        self._clearAction.triggered.connect(self._clearGame)
+        self._clearAction.triggered.connect(self.clearGame)
         self.addAction(self._clearAction)
 
         # widgets
@@ -277,7 +277,7 @@ class TicTacToeGame(QtWidgets.QFrame):
     def setCurrentPlayer(self, player: Player):
         self.currentPlayer.setState(player)
 
-    def _clearGame(self):
+    def clearGame(self):
         self.fieldWidget.clearBoard()
         self.setCurrentPlayer(self.game.current_player)
 
