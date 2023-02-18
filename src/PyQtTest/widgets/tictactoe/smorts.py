@@ -15,26 +15,42 @@ class CannotComputeMove(RuntimeError):
     '''the AI cannot come up with next move'''
 
 class AbstractAI(abc.ABC):
-    def __init__(self, player: Player = O) -> None:
-        self.player = player
-        self.opponent = next(player)
+    def __init__(self, player: Player = None) -> None:
+        if player is None: 
+            self.player = choice(tuple(Player.PLAYER_STATES))
+            self.random_player = True
+        else: 
+            self.player = player
+            self.random_player = False
+
+    @property
+    def player(self) -> Player:
+        return self._player
+
+    @player.setter
+    def player(self, player:Player):
+        if Player.is_player(player):
+            self._player = player
+            self._opponent = next(player)
+        else:
+            raise TypeError(f"expected Player, not {type(player)}")
+
+    @property
+    def opponent(self) -> Player:
+        return self._opponent
 
     @abc.abstractmethod
     def next_move(self, board: Board) -> Move:
         '''the next move for the player represented by this AI'''
         raise CannotComputeMove()
 
-    @abc.abstractmethod
     def new_game(self) -> None:
-        '''reset the ai to its initial state'''
-        ...
+        '''reset the ai to its initial state. '''
+        if self.random_player: 
+            self.player = choice(tuple(Player.PLAYER_STATES))
 
 class ExplicitAI(AbstractAI):
-    '''a tic-tac-toe ai unsing explicit logic'''
-
-    def new_game(self):
-        #we don't need to reset anything
-        pass
+    '''a tic-tac-toe ai using explicit logic'''
 
     def next_move(self, board: Board) -> Move:
         '''the next move for the player represented by this AI'''

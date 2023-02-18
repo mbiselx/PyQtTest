@@ -264,6 +264,7 @@ class TicTacToeGame(QtWidgets.QFrame):
         self.clearBtn.clicked.connect(self._clearAction.trigger)
 
         self.moveFinished.connect(self._autoNextMove)
+        QtCore.QTimer.singleShot(1, self._autoNextMove) # immediately do auto-move
 
         # do layout
         topBar = QtWidgets.QHBoxLayout()
@@ -280,6 +281,7 @@ class TicTacToeGame(QtWidgets.QFrame):
     def clearGame(self):
         self.fieldWidget.clearBoard()
         self.setCurrentPlayer(self.game.current_player)
+        self.moveFinished.emit()
 
     def nextMove(self) -> 'Move | None':
         '''make the next move'''
@@ -289,6 +291,7 @@ class TicTacToeGame(QtWidgets.QFrame):
         if self.applyMove(move) and not self.evaluateGame():
             self.moveFinished.emit()
 
+    @QtCore.pyqtSlot()
     def _autoNextMove(self):
         next_move = self.nextMove()
         if next_move is not None:
