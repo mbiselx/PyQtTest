@@ -4,7 +4,7 @@ this is where the game lives
 
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Any, Generator, List, overload
+from typing import Optional, Any, Generator, List, Callable, overload
 
 __all__ = [
     'X', 'O', 'N',
@@ -73,15 +73,28 @@ class Field:
     '''represent a single field on the TicTacToe board'''
 
     def __init__(self, index: 'tuple[int, int]', state: Optional[State] = None) -> None:
-        if not isinstance(index, tuple): 
+        if not isinstance(index, tuple):
             raise TypeError(f"Expected tuple[int, int], not {type(index)!s}")
-        if not len(index) == 2 : 
+        if not len(index) == 2:
             raise ValueError(f"Expected tuple of length 2, not {len(index)}")
-        if not (isinstance(index[0], int) and isinstance(index[1], int)) : 
-            raise TypeError(f"Expected tuple[int, int], not tuple[{type(index[0])!s}, {type(index[1])!s}]")
+        if not (isinstance(index[0], int) and isinstance(index[1], int)):
+            raise TypeError(
+                f"Expected tuple[int, int], not tuple[{type(index[0])!s}, {type(index[1])!s}]")
+
+        self._view_refresh: 'Callable[[], None] | None' = None
+        '''callback to refresh gui'''
 
         self._index = index
         self.state = state or N
+
+    def register_view_refresh(self, view_refresh: 'Callable[[], None] | None'):
+        '''register a new function as a view-refresher. register ``None` to remove'''
+        self._view_refresh = view_refresh
+
+    def view_refresh(self):
+        '''refresh GUI if applicable'''
+        if self._view_refresh is not None:
+            self._view_refresh()
 
     @property
     def state(self) -> State:
@@ -93,21 +106,30 @@ class Field:
         if not State.is_valid(value):
             raise TypeError(f"State can only be one of {State.ALLOWED_STATES}")
         self.__state = value
+        self.view_refresh()
 
     def clear(self):
         '''clear the field's state'''
         self.__state = N
+        self.view_refresh()
+
+    def set(self, state: State):
+        '''set the field's state'''
+        self.state = state
+
+    def is_empty(self) -> bool:
+        return self.state is N
 
     def __str__(self) -> str:
         return f' {self.state} '  # padded
 
-    def __contains__(self, other:Any) -> bool:
+    def __contains__(self, other: Any) -> bool:
         return self.state == other
 
     @property
     def index(self) -> 'tuple[int, int]':
         return self._index
-        
+
     @property
     def row(self) -> int:
         return self._index[0]
@@ -116,20 +138,23 @@ class Field:
     def column(self) -> int:
         return self._index[1]
 
+
 class Board:
     '''represent a TicTacToe board'''
 
     def __init__(self, size: int = 3) -> None:
         self._size = size
-        self._fields = [[Field((i,j)) for j in range(size)] for i in range(size)]
+        self._fields = [[Field((i, j)) for j in range(size)]
+                        for i in range(size)]
 
     @property
     def size(self) -> int:
+        '''size of the board'''
         return self._size
 
     def __str__(self) -> str:
         '''print the board to stdout'''
-        hsep = '+'.join(self.size*[len(str(Field()))*'-']) + '\n'
+        hsep = '+'.join(self.size*['---']) + '\n'
         rows = ('|'.join(map(str, row)) + '\n' for row in self._fields)
         return hsep.join(rows)
 
@@ -161,9 +186,9 @@ class Board:
         # this is a bit clunky, but i'm doing it this way for symmetry, okay ?
         return (list(self._fields[l(i)][i] for i in range(self._size)) for l in (lambda i: i, lambda i: self.size-i-1))
 
-    def all_win_conditions(self)-> Generator[List[Field], None, None]:
-        '''return a generator containing the lists of fields for all win-conditions of the board'''
-        return (*self.rows(), *self.columns(), *self.diagonals())
+    def all_win_conditions(self) -> List[List[Field]]:
+        '''return a list containing the lists of fields for all win-conditions of the board'''
+        return [*self.rows(), *self.columns(), *self.diagonals()]
 
     def is_empty(self) -> bool:
         '''return whether or not the board is empty'''
@@ -181,7 +206,7 @@ class Board:
 
     def has_won(self, player: Player) -> bool:
         '''check if a given player has won'''
-        return any(all(field.state==player for field in wincon) for wincon in self.all_win_conditions())
+        return any(all(field.state == player for field in wincon) for wincon in self.all_win_conditions())
 
     def winning_player(self) -> 'Player | None':
         '''get the player currently winning'''
@@ -215,11 +240,24 @@ class Game(Board):
         super().__init__(size=size)
         self._initial_player = initial_player  # keep this reference for when we reset
 
-        self.current_player = initial_player
+        # this is placed in a field for gui updating
+        self._current_player = Field((-1, -1), initial_player)
         '''the player whose move it is now'''
 
         self._history: 'list[Move]' = []
         '''the history of the moves played so far'''
+
+    @property
+    def current_player(self) -> Player:
+        '''the player whose move it is now'''
+        if isinstance(self._current_player.state, Player):
+            return self._current_player.state
+        else:  # this is just here so typehinting stops whining
+            return self._initial_player
+
+    @current_player.setter
+    def current_player(self, player: Player):
+        self._current_player.state = player
 
     @property
     def next_player(self) -> Player:
@@ -327,11 +365,13 @@ class Game(Board):
 
         for row in self.rows():
             if all(f.state == player for f in row):
-                outlist.extend(self.find_move(row[0].row, c) for c in range(self.size))
+                outlist.extend(self.find_move(row[0].row, c)
+                               for c in range(self.size))
 
         for col in self.columns():
             if all(f.state == player for f in col):
-                outlist.extend(self.find_move(r, col[0].column) for r in range(self.size))
+                outlist.extend(self.find_move(
+                    r, col[0].column) for r in range(self.size))
 
         # ughhh the diagonals are so annoying
         descending, ascending = self.diagonals()
