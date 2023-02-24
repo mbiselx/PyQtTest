@@ -17,12 +17,13 @@ The `-e` flag is used to make the package 'editable'.
 ## Items of Note
 
 1. [Resource Manager](src/PyQtTest/resources/images/__init__.py) : access module resources easily
-2. [Image Segmenting](src/PyQtTest/widgets/hit_marker/image_segmentor.py) : break and image down into segments and colorize an image by segment. The segments can also be labled.
-3. [Reloadable Widgets](src/PyQtTest/widgets/utils/reloadable_widget.py) : reload a widget from source at runtime - useful for *very* rapid prototyping. Also allows the quick reloading of the Qt stylesheet. 
+2. [Image Segmenting](src/PyQtTest/widgets/hit_marker/image_segmentor.py) : break an image down into segments and colorize an image by segment. The segments can be labled.
+3. [Reloadable Widgets](src/PyQtTest/widgets/utils/reloadable_widget.py) : reload a widget from source at runtime - useful for *very* rapid prototyping. Also allows quick reloading of the Qt stylesheet.
 4. [Navball Widget](src/PyQtTest/widgets/hud/navball_pyqtgraph.py) : a 3D ball drawn on a transparent background - could be used to represent the attitude of a vehicle (like in [Kerball Space Programm](https://wiki.kerbalspaceprogram.com/wiki/Navball)). Still a bit rough and needs some work before it's ready. Maybe I'll continue working on it someday -- but today is not that day.
 5. [Tape Indicator Flight Instrument](src/PyQtTest/widgets/flight_indicators/tape_indicator.py) : a simple but versatile widget implementing a tape (or drum) indicator, useful for displaying unbounded analog values.
 6. [Artificial Horizon Flight Instrument](src/PyQtTest/widgets/flight_indicators/artificial_horizon.py) : a simple artificial horizon widget that comes in two styles: dashboard-style and HUD-style. Can be connected to the laptop orientation sensor for extra fun.
 7. [Form Generation](src/PyQtTest/widgets/form_generation/form_generation.py) : parses a JSON or YAML file into a QT Form, and places the output of the form into a JSON/YAML compatible dictionary on request.
+8. [TicTacToe](src/PyQtTest/widgets/tictactoe/tictactoe.py) : a tic-tac-toe game with a home-made 'ai' opponent (the next step is to try more fancy 'ai' types!)
 
 ## Gallery 
 
