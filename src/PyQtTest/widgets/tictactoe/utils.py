@@ -363,22 +363,8 @@ class Game(Board):
             if player is None:  # still `None` means nobody is winning
                 return outlist  # empty list
 
-        for row in self.rows():
-            if all(f.state == player for f in row):
-                outlist.extend(self.find_move(row[0].row, c)
-                               for c in range(self.size))
-
-        for col in self.columns():
-            if all(f.state == player for f in col):
-                outlist.extend(self.find_move(
-                    r, col[0].column) for r in range(self.size))
-
-        # ughhh the diagonals are so annoying
-        descending, ascending = self.diagonals()
-        if all(f.state == player for f in descending):
-            outlist.extend(self.find_move(i, i) for i in range(self.size))
-        if all(f.state == player for f in ascending):
-            outlist.extend(self.find_move(self.size-1-i, i)
-                           for i in range(self.size))
+        for wincon in self.all_win_conditions():
+            if all(f.state == player for f in wincon):
+                outlist.extend(self.find_move(*f.index) for f in wincon)
 
         return outlist
