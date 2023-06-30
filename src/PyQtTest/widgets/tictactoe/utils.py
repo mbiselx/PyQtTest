@@ -2,9 +2,10 @@
 this is where the game lives
 '''
 
+from time import time_ns
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Any, Generator, List, Callable, overload
+from typing import Optional, Any, Generator, List, Callable, overload, Iterable
 
 __all__ = [
     'X', 'O', 'N',
@@ -13,7 +14,8 @@ __all__ = [
     'Field',
     'Board',
     'Move',
-    'Game'
+    'Game',
+    'ProcessTimer',
 ]
 
 
@@ -152,6 +154,10 @@ class Board:
         '''size of the board'''
         return self._size
 
+    def fields(self) -> List[Field]:
+        '''flattened list of all fields of the board'''
+        return sum(self._fields, [])
+
     def __str__(self) -> str:
         '''print the board to stdout'''
         hsep = '+'.join(self.size*['---']) + '\n'
@@ -198,6 +204,10 @@ class Board:
         '''return whether or not the board is full'''
         return all(all(f.state != N for f in row) for row in self._fields)
 
+    def free_fields(self) -> List[Field]:
+        '''return a list of all free fields'''
+        return [f for row in self._fields for f in row if f.state == N]
+
     def clear(self):
         '''clear the board'''
         for row in self.rows():
@@ -218,6 +228,10 @@ class Board:
     def stalemate(self) -> bool:
         '''has a stalemate occurred ?'''
         return self.is_full() and self.winning_player() is None
+
+    def game_over(self) -> bool:
+        '''is the game over ?'''
+        return self.is_full() or self.winning_player() is not None
 
 
 @dataclass
@@ -288,6 +302,10 @@ class Game(Board):
 
         # append the move to the game 'history'
         self._history.append(move)
+
+    def apply_moves(self, moves: Iterable[Move]):
+        for move in moves:
+            self.apply_move(move)
 
     @overload
     def move(self, __move: Move) -> None: ...
@@ -368,3 +386,34 @@ class Game(Board):
                 outlist.extend(self.find_move(*f.index) for f in wincon)
 
         return outlist
+
+
+class ProcessTimer:
+    def __init__(self, callback: Optional[Callable[[int], None]] = None) -> None:
+        self.start_time: int = time_ns()
+        self.end_time: int = 0
+        self.callback: Callable[[int], None] = callback or (lambda i: None)
+
+    @property
+    def nanoseconds(self) -> int:
+        return time_ns() - self.start_time
+
+    @property
+    def microseconds(self) -> float:
+        return self.nanoseconds/1e3
+
+    @property
+    def milliseconds(self) -> float:
+        return self.nanoseconds/1e6
+
+    @property
+    def seconds(self) -> float:
+        return self.nanoseconds/1e9
+
+    def __enter__(self) -> 'ProcessTimer':
+        self.start_time = time_ns()
+        return self
+
+    def __exit__(self, *args):
+        self.end_time = time_ns()
+        self.callback(self.end_time - self.start_time)

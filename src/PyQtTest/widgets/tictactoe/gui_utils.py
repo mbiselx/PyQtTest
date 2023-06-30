@@ -286,24 +286,31 @@ class TicTacToeGame(QtWidgets.QFrame):
         '''make the next move'''
         return None
 
-    def _applyMove(self, move: Move):
-        if self.applyMove(move) and not self.evaluateGame():
-            self.moveFinished.emit()
+    def moveApplied(self, move: Move):
+        '''a move has been successfully applied'''
+        pass
 
     def _autoNextMove(self):
         next_move = self.nextMove()
         if next_move is not None:
             self._applyMove(next_move)
 
+    def _applyMove(self, move: Move):
+        if self.applyMove(move) and not self.evaluateGame():
+            self.moveFinished.emit()
+
     def applyMove(self, move: Move) -> bool:
+        '''attempt to apply a move. return success'''
         try:
             self.game.move(move)
+            self.moveApplied(move)
             return True
         except Move.IllegalMove:
             self.fieldWidget.illegalMove(move)
             return False
 
     def evaluateGame(self) -> bool:
+        '''return 'game over' status'''
         winning_player = self.game.winning_player()
         if winning_player is not None:
             self.logger.debug(f"{winning_player} has won")
